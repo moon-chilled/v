@@ -1,0 +1,52 @@
+'v' - texteditor with higher-order functions
+Making repetitive actions easier since 2021; death to visual mode/multiple cursors/vis!
+
+conception: in vi, 'w' is a motion.
+This is a first-order function that transforms a buffer&location into a new location.
+'d' is an operator, or second-order function.
+It takes a first-order function (like w), a buffer, and a location, and produces a new buffer and a new location.
+
+Where can you go from there?
+In vi--you can't.
+(Something which seems tempting to point out as a counterexample is 5dw, but dw isn't actually passed as an argument to 5; rather, 5 and w are both passed as arguments to d.
+ Nx doesn't mean 'do x N times', but rather 'argue N to x'.
+ Try, for instance, 5J.
+ It doesn't run J 5 times, but rather joins 5 lines together.)
+
+In v, however, you can freely pass any text transformation function to any other.
+Where this shines is with macros and auto-curry.
+If you've ever used a language 'f _ x' was shorthand for '\tmp -> f tmp x', you'll feel right at home.
+
+The '-' and '_' have had their vimmish meanings stolen; now, consider '5d-'.
+'5d' is a text transformation taking a motion, which transformation has been partially applied.
+Say we somehow put that in a macro.
+Every time we run that macro, we get prompted to provide a text motion, and then that motion is deleted.
+Nice enough, neh?
+
+Now _.
+Whereas - represents the most generic available function, _ represents /typed/ functions.
+The following types exist:
+
+Character = () -> Char
+Str = () -> [Char]
+Motion = (TextBuffer,Loc) -> Loc
+Transformation = (TextBuffer,Loc) -> (TextBuffer,Loc)
+
+(This is subject to change.  In particular, I'm slightly interested in a good design that incorporates text objects.
+ Although, they can be obviated by motions to move to begin/end, and with an extra bit of context-sensitivity it can be the same number of keystrokes.
+ My worry is that it will be more difficult to reason about, but this may be unfounded; need to experiment.)
+
+_C_ is the type of a character.
+_CM_ takes a character and maps it to a motion.  (This is the type of 't' and 'r'.)
+_SM_ takes a string and maps it to a motion.  (This is the type of '/'.)
+_CT_ is character->transformation, like 'r'.
+And so on.
+
+In the context of a motion, _c is shorthand for a map from a character to a transformation, and thus equivalent to _CM_.
+
+In light of this, consider the macro 'd_cE'.
+When we run this macro, we're prompted for a character-oriented motion (in vi, these are just tTfF); this motion is applied to E, and then we delete from the current position to the position moved to.
+
+Under this model, it's easy to imagine a function that takes a transformation and does something useful with it.
+For instance, take a pattern and a function (which can be a macro), jump to each location matching the pattern and run the function.
+Combined with partially applied functions (which prompt for input when applied), this obviates hacks like 500@q, n.n.n.n. spams, and multiple cursors; and it is more concise and easier to reason about than they.
