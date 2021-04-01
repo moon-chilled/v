@@ -68,7 +68,7 @@ static int msgwin_render(TickitWindow *win, TickitEventFlags flags, void *_info,
 	return 1;
 }
 
-static void msg(V *v, const char *fmt, ...) {
+void msg(V *v, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
 	free(v->newest_message);
@@ -84,27 +84,28 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 		usz l;
 		const glyph *new = from_utf8((const unsigned char*)info->str, &l);
 
+		Function f = {0};
 		if (v->mode == ModeInsert) {
-			Function f = new_str(new, l);
-			apply_transformation(v, &f);
+			f = new_str(new, l);
 		} else {
 			assert(l == 1);
 			if (*new < 128 && v->km_normal.ascii[*new]) {
-				Function f = v->km_normal.ascii[*new](v);
-				apply_transformation(v, &f);
+				f = v->km_normal.ascii[*new](v);
 			}
 		}
+
+		if (f.type) v_push(v, &f);
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
 		Keymap *km = v->mode == ModeInsert ? &v->km_insert : &v->km_normal;
 		if (km->special[k]) {
 			Function f = km->special[k](v);
-			apply_transformation(v, &f);
+			v_push(v, &f);
 		}
 	}
 
-	tickit_window_expose(win, NULL);
+	if (v_reduce(v)) tickit_window_expose(win, NULL);
 
 	return 1;
 }
@@ -149,6 +150,7 @@ void init_v(V *v) {
 	v->km_normal.ascii['$'] = motion_eol;
 	v->km_normal.ascii['w'] = motion_wordforward;
 	v->km_normal.ascii['b'] = motion_wordback;
+	v->km_normal.ascii['d'] = hof_delete;
 }
 
 int main(void) {

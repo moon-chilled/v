@@ -36,8 +36,13 @@ struct V {
 	Buffer b;
 	Mode mode;
 	Keymap km_normal, km_insert;
+
+	Function *current;
 };
 
+void msg(V *v, const char *fmt, ...);
 
+void v_push(V *v, Function *f);
+bool v_reduce(V *v);
 
 #endif //CV_V_H

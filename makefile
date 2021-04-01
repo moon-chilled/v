@@ -2,7 +2,7 @@ CFLAGS := -Ii -g -Wall -Wextra -Werror -Wno-unused-parameter -Wno-parentheses -s
 CFLAGS += -MMD
 LFLAGS := -ltickit -lgc
 CCLD ?= $(CC)
-C := c/cv.c c/tb.c c/functions.c c/function.c
+C := c/cv.c c/tb.c c/functions.c c/function.c c/v.c
 O := $(patsubst %.c,o/%.o,$(C))
 
 v: $(O)
