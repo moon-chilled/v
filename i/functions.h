@@ -31,7 +31,8 @@ struct Function {
 		struct {
 			void *state;
 			FunctionType parameter;
-			Function (*transform)(V *v, void *state, const Function *other);
+			//needs Function *ret, which is a dummy but still mostly correct.  (ret can be bottom?)  (ret can be bottom if unknowable?)
+			Function (*transform)(const V *v, void *state, const Function *other);
 		} higher_order;
 	};
 };
@@ -40,7 +41,7 @@ static inline Function new_str(const glyph *s, usz l) { return (Function){.type=
 static inline Function new_char(glyph g) { return (Function){.type=FunctionChar, .character=g}; }
 static inline Function new_motion(Loc (*motion)(const V*)) { return (Function){.type=FunctionMotion, .motion=motion}; }
 static inline Function new_transformation(void *state, void (*perform)(V*,void*), void (*undo)(V*,void*)) { return (Function){.type=FunctionTransform, .action={.state=state, .perform=perform, .undo=undo}}; }
-static inline Function new_hof(void *state, FunctionType parameter, Function (*transform)(V*,void*,const Function*)) { return (Function){.type=FunctionHigherOrder, .higher_order={.state=state, .parameter=parameter, .transform=transform}}; }
+static inline Function new_hof(void *state, FunctionType parameter, Function (*transform)(const V*,void*,const Function*)) { return (Function){.type=FunctionHigherOrder, .higher_order={.state=state, .parameter=parameter, .transform=transform}}; }
 
 Function motion_cleft(const V*), motion_cright(const V*), motion_cup(const V*), motion_cdown(const V*);
 

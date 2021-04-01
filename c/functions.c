@@ -151,7 +151,7 @@ static void perform_delete(V *v, void *state) {
 static void undo_delete(V *v, void *state) { assert(0); /*todo*/ }
 
 
-static Function deleter(V *v, void *state, const Function *other) {
+static Function deleter(const V *v, void *state, const Function *other) {
 	assert (other->type == FunctionMotion); //wg14 y u no HKT
 	Loc *nloc = new(Loc, 1);
 	*nloc = other->motion(v);

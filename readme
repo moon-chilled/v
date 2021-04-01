@@ -33,6 +33,7 @@ Character = () -> Char
 Str = () -> [Char]
 Motion = (TextBuffer,Loc) -> Loc
 Transformation = (TextBuffer,Loc) -> (TextBuffer,Loc)
+HigherOrder = (Function,Loc,Function) -> Function
 
 (This is subject to change.  In particular, I'm slightly interested in a good design that incorporates text objects.
  Although, they can be obviated by motions to move to begin/end, and with an extra bit of context-sensitivity it can be the same number of keystrokes.
