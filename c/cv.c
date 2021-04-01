@@ -147,6 +147,8 @@ void init_v(V *v) {
 	v->km_normal.ascii['l'] = motion_cright;
 	v->km_normal.ascii['0'] = motion_bol;
 	v->km_normal.ascii['$'] = motion_eol;
+	v->km_normal.ascii['w'] = motion_wordforward;
+	v->km_normal.ascii['b'] = motion_wordback;
 }
 
 int main(void) {

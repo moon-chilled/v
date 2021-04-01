@@ -38,6 +38,7 @@ Function motion_cleft(const V*), motion_cright(const V*), motion_cup(const V*), 
 typedef Function (Actor)(const V *b);
 Actor motion_cleft, motion_cright, motion_cup, motion_cdown;
 Actor motion_bol, motion_eol;
+Actor motion_wordforward, motion_wordback;
 Actor transform_ins_nl, transform_delback, transform_delforward;
 Actor transform_insert, transform_normal;
 

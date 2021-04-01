@@ -1,5 +1,10 @@
 #include "v.h"
 
+// ctype isspace is bad
+static bool is_space(glyph g) {
+	return g == ' ' || g == '\t' || g == '\n' || g == '\r' || g == '\f';
+}
+
 static Loc move_cleft(const V *v) {
         Loc r = v->b.loc;
         if (r.x) r.x--;
@@ -36,12 +41,36 @@ static Loc move_bol(const V *v) {
 	r.x = 0;
 	return r;
 }
+static Loc move_wordforward(const V *v) {
+	Loc r = v->b.loc;
+	TextBuffer tb = v->b.tb;
+	while (r.x + (v->mode == ModeNormal) < tb.lines[r.y].l && !isspace(tb.lines[r.y].glyphs[r.x])) {
+		r.x++;
+	}
+	while (r.x + (v->mode == ModeNormal) < tb.lines[r.y].l && isspace(tb.lines[r.y].glyphs[r.x])) {
+		r.x++;
+	}
+	return r;
+}
+static Loc move_wordback(const V *v) {
+	Loc r = v->b.loc;
+	TextBuffer tb = v->b.tb;
+	while (r.x && isspace(tb.lines[r.y].glyphs[r.x-1])) {
+		r.x--;
+	}
+	while (r.x && !isspace(tb.lines[r.y].glyphs[r.x-1])) {
+		r.x--;
+	}
+	return r;
+}
 Function motion_cleft(const V *v) { return new_motion(move_cleft); }
 Function motion_cright(const V *v) { return new_motion(move_cright); }
 Function motion_cup(const V *v) { return new_motion(move_cup); }
 Function motion_cdown(const V *v) { return new_motion(move_cdown); }
 Function motion_eol(const V *v) { return new_motion(move_eol); }
 Function motion_bol(const V *v) { return new_motion(move_bol); }
+Function motion_wordforward(const V *v) { return new_motion(move_wordforward); }
+Function motion_wordback(const V *v) { return new_motion(move_wordback); }
 
 static void perform_ins_nl(V *v, void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);
