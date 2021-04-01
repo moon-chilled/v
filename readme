@@ -1,7 +1,9 @@
 'v' - texteditor with higher-order functions
 Making repetitive actions easier since 2021; death to visual mode/multiple cursors/vis!
 
-conception: in vi, 'w' is a motion.
+Why: because repetitive actions get frustratingly verbose in vi sometimes.
+
+Conception: in vi, 'w' is a motion.
 This is a first-order function that transforms a buffer&location into a new location.
 'd' is an operator, or second-order function.
 It takes a first-order function (like w), a buffer, and a location, and produces a new buffer and a new location.
