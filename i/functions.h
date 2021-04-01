@@ -1,9 +1,6 @@
 #ifndef CV_FUNCTIONS_H
 #define CV_FUNCTIONS_H
 
-#include "prelude.h"
-#include "text-buffer.h"
-
 typedef enum {
 	FunctionStr = 0x1,       // () -> Str.             e.g. the parameter to '/'.  (And 'i', sort of.)
 	FunctionChar = 0x2,      // () -> Char.            e.g. the parameter to 'r' or 't'
@@ -22,26 +19,28 @@ typedef struct {
 	union {
 		struct { const glyph *s; usz l; } str;
 		glyph character;
-		Loc (*motion)(const Buffer *b);
+		Loc (*motion)(const V *v);
 		struct {
 			void *state; //todo serialize?
-			void (*perform)(Buffer *b, void *state);
-			void (*undo)(Buffer *b, void *state);
+			void (*perform)(V *v, void *state);
+			void (*undo)(V *v, void *state);
 		} action;
 	};
 } Function;
 
 static inline Function new_str(const glyph *s, usz l) { return (Function){.type=FunctionStr, .str.s=s, .str.l=l}; }
 static inline Function new_char(glyph g) { return (Function){.type=FunctionChar, .character=g}; }
-static inline Function new_motion(Loc (*motion)(const Buffer*)) { return (Function){.type=FunctionMotion, .motion=motion}; }
-static inline Function new_transformation(void *state, void (*perform)(Buffer*,void*), void (*undo)(Buffer*,void*)) { return (Function){.type=FunctionTransform, .action={.state=state, .perform=perform, .undo=undo}}; }
+static inline Function new_motion(Loc (*motion)(const V*)) { return (Function){.type=FunctionMotion, .motion=motion}; }
+static inline Function new_transformation(void *state, void (*perform)(V*,void*), void (*undo)(V*,void*)) { return (Function){.type=FunctionTransform, .action={.state=state, .perform=perform, .undo=undo}}; }
 
-Function motion_cleft(const Buffer*), motion_cright(const Buffer*), motion_cup(const Buffer*), motion_cdown(const Buffer*);
+Function motion_cleft(const V*), motion_cright(const V*), motion_cup(const V*), motion_cdown(const V*);
 
-typedef Function (Actor)(const Buffer *b);
+typedef Function (Actor)(const V *b);
 Actor motion_cleft, motion_cright, motion_cup, motion_cdown;
+Actor motion_bol, motion_eol;
 Actor transform_ins_nl, transform_delback, transform_delforward;
+Actor transform_insert, transform_normal;
 
-void apply_transformation(Buffer *b, const Function *f);
+void apply_transformation(V *b, const Function *f);
 
 #endif //CV_FUNCTIONS_H

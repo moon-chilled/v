@@ -1,8 +1,6 @@
 #ifndef CV_TEXTBUFFER_H
 #define CV_TEXTBUFFER_H
 
-#include "prelude.h"
-
 typedef struct {
 	struct {
 		glyph *glyphs; //todo grapheme cluster

@@ -1,4 +1,4 @@
-#include "text-buffer.h"
+#include "v.h"
 
 void tb_insert(TextBuffer *tb, usz ln, usz c, const glyph *text, usz len) {
 	assert (ln < tb->l);

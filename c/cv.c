@@ -1,16 +1,6 @@
-#define _GNU_SOURCE
+#define _GNU_SOURCE //strdup, asprintf
 
-#include <tickit.h>
-
-#include "prelude.h"
-#include "text-buffer.h"
-#include "functions.h"
-
-typedef struct {
-	char *newest_message;
-	TickitWindow *message_window, *text_window;
-	Buffer b;
-} V;
+#include "v.h"
 
 usz utf8d1(glyph *o, const unsigned char *i) {
 	if (0xf8 <= *i) return 0;
@@ -58,24 +48,15 @@ const glyph *from_utf8(const unsigned char *text, usz *l) {
 	return ret;
 }
 
-typedef enum {
-	KeyLeft = 1,
-	KeyRight,
-	KeyUp,
-	KeyDown,
-	KeyEnter,
-	KeyBackspace,
-	KeyDelete,
-} Key;
-
-static bool tickit_to_key(const char *s, Key *k) {
-	if (!strcmp(s, "Left")) return *k = KeyLeft;
-	if (!strcmp(s, "Right")) return *k = KeyRight;
-	if (!strcmp(s, "Up")) return *k = KeyUp;
-	if (!strcmp(s, "Down")) return *k = KeyDown;
-	if (!strcmp(s, "Enter")) return *k = KeyEnter;
-	if (!strcmp(s, "Backspace")) return *k = KeyBackspace;
-	if (!strcmp(s, "Delete")) return *k = KeyDelete;
+static bool tickit_to_key(const char *s, SpecialKey *k) {
+	if (!strcmp(s, "Left")) return *k = SpecialKeyLeft;
+	if (!strcmp(s, "Right")) return *k = SpecialKeyRight;
+	if (!strcmp(s, "Up")) return *k = SpecialKeyUp;
+	if (!strcmp(s, "Down")) return *k = SpecialKeyDown;
+	if (!strcmp(s, "Enter")) return *k = SpecialKeyEnter;
+	if (!strcmp(s, "Backspace")) return *k = SpecialKeyBackspace;
+	if (!strcmp(s, "Delete")) return *k = SpecialKeyDelete;
+	if (!strcmp(s, "Escape")) return *k = SpecialKeyEscape;
 	return false;
 }
 
@@ -103,22 +84,24 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 		usz l;
 		const glyph *new = from_utf8((const unsigned char*)info->str, &l);
 
-		Function f = new_str(new, l);
-		apply_transformation(&v->b, &f);
-	} else if (info->type == TICKIT_KEYEV_KEY) {
-		Key k;
-		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
-		Function f = {0};
-		switch (k) {
-			case KeyLeft: f = motion_cleft(&v->b); break;
-			case KeyRight: f = motion_cright(&v->b); break;
-			case KeyUp: f = motion_cup(&v->b); break;
-			case KeyDown: f = motion_cdown(&v->b); break;
-			case KeyEnter: f = transform_ins_nl(&v->b); break;
-			case KeyBackspace: f = transform_delback(&v->b); break;
-			case KeyDelete: f = transform_delforward(&v->b); break;
+		if (v->mode == ModeInsert) {
+			Function f = new_str(new, l);
+			apply_transformation(v, &f);
+		} else {
+			assert(l == 1);
+			if (*new < 128 && v->km_normal.ascii[*new]) {
+				Function f = v->km_normal.ascii[*new](v);
+				apply_transformation(v, &f);
+			}
 		}
-		if (f.type) apply_transformation(&v->b, &f);
+	} else if (info->type == TICKIT_KEYEV_KEY) {
+		SpecialKey k;
+		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
+		Keymap *km = v->mode == ModeInsert ? &v->km_insert : &v->km_normal;
+		if (km->special[k]) {
+			Function f = km->special[k](v);
+			apply_transformation(v, &f);
+		}
 	}
 
 	tickit_window_expose(win, NULL);
@@ -140,9 +123,35 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	return 1;
 }
 
+void init_v(V *v) {
+	v->newest_message = strdup("Welcome to v!");
+	tb_insert_line(&v->b.tb, 0);
+
+	v->mode = ModeInsert;
+
+	v->km_insert.special[SpecialKeyLeft] = motion_cleft;
+	v->km_insert.special[SpecialKeyRight] = motion_cright;
+	v->km_insert.special[SpecialKeyUp] = motion_cup;
+	v->km_insert.special[SpecialKeyDown] = motion_cdown;
+	v->km_insert.special[SpecialKeyEnter] = transform_ins_nl;
+	v->km_insert.special[SpecialKeyBackspace] = transform_delback;
+	v->km_insert.special[SpecialKeyDelete] = transform_delforward;
+	v->km_insert.special[SpecialKeyEscape] = transform_normal;
+
+	v->km_normal.ascii['x'] = transform_delforward;
+	v->km_normal.ascii['i'] = transform_insert;
+
+	v->km_normal.ascii['h'] = motion_cleft;
+	v->km_normal.ascii['j'] = motion_cdown;
+	v->km_normal.ascii['k'] = motion_cup;
+	v->km_normal.ascii['l'] = motion_cright;
+	v->km_normal.ascii['0'] = motion_bol;
+	v->km_normal.ascii['$'] = motion_eol;
+}
+
 int main(void) {
-	V v = {.newest_message=strdup("")};
-	tb_insert_line(&v.b.tb, 0);
+	V v = {0};
+	init_v(&v);
 
 	Tickit *t = tickit_new_stdio();
 	TickitWindow *rt = tickit_get_rootwin(t);
