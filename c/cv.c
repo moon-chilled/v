@@ -71,8 +71,7 @@ static int msgwin_render(TickitWindow *win, TickitEventFlags flags, void *_info,
 void msg(V *v, const char *fmt, ...) {
 	va_list ap;
 	va_start(ap, fmt);
-	free(v->newest_message);
-	vasprintf(&v->newest_message, fmt, ap);
+	vsnprintf(v->newest_message, sizeof(v->newest_message), fmt, ap);
 	tickit_window_expose(v->message_window, NULL);
 }
 
@@ -94,7 +93,7 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			}
 		}
 
-		if (f.type) v_push(v, &f);
+		if (f.type.ret) v_push(v, &f);
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
@@ -125,10 +124,13 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 }
 
 void init_v(V *v) {
-	v->newest_message = strdup("Welcome to v!");
+	memset(v, 0, sizeof(*v));
+
+	strcpy(v->newest_message, "Welcome to v!");
+
 	tb_insert_line(&v->b.tb, 0);
 
-	v->mode = ModeInsert;
+	v->mode = ModeNormal;
 
 	v->km_insert.special[SpecialKeyLeft] = motion_cleft;
 	v->km_insert.special[SpecialKeyRight] = motion_cright;
@@ -154,22 +156,22 @@ void init_v(V *v) {
 }
 
 int main(void) {
-	V v = {0};
-	init_v(&v);
+	V *v = new(V, 1); //big
+	init_v(v);
 
 	Tickit *t = tickit_new_stdio();
 	TickitWindow *rt = tickit_get_rootwin(t);
-	v.text_window = tickit_window_new(rt, (TickitRect){.top = 0, .left = 0, .lines = tickit_window_lines(rt) - 1, .cols = tickit_window_cols(rt)}, 0);
-	v.message_window = tickit_window_new(rt, (TickitRect){.top = tickit_window_lines(rt) - 1, .left = 0, .lines = 1, .cols = tickit_window_cols(rt)}, 0);
+	v->text_window = tickit_window_new(rt, (TickitRect){.top = 0, .left = 0, .lines = tickit_window_lines(rt) - 1, .cols = tickit_window_cols(rt)}, 0);
+	v->message_window = tickit_window_new(rt, (TickitRect){.top = tickit_window_lines(rt) - 1, .left = 0, .lines = 1, .cols = tickit_window_cols(rt)}, 0);
 	//tickit_term_setctl_int(tickit_window_get_term(rt), TICKIT_TERMCTL_CURSORSHAPE, TICKIT_CURSORSHAPE_LEFT_BAR);
-	tickit_window_show(v.text_window);
-	tickit_window_show(v.message_window);
+	tickit_window_show(v->text_window);
+	tickit_window_show(v->message_window);
 
-	tickit_window_bind_event(v.message_window, TICKIT_WINDOW_ON_EXPOSE, 0, msgwin_render, &v);
+	tickit_window_bind_event(v->message_window, TICKIT_WINDOW_ON_EXPOSE, 0, msgwin_render, v);
 
-	tickit_window_bind_event(v.text_window, TICKIT_WINDOW_ON_KEY, 0, on_key, &v);
-	tickit_window_bind_event(v.text_window, TICKIT_WINDOW_ON_EXPOSE, 0, render, &v);
-	tickit_window_take_focus(v.text_window);
+	tickit_window_bind_event(v->text_window, TICKIT_WINDOW_ON_KEY, 0, on_key, v);
+	tickit_window_bind_event(v->text_window, TICKIT_WINDOW_ON_EXPOSE, 0, render, v);
+	tickit_window_take_focus(v->text_window);
 	tickit_run(t);
 	//tickit_term_setctl_int(tickit_window_get_term(rt), TICKIT_TERMCTL_CURSORSHAPE, TICKIT_CURSORSHAPE_BLOCK);
 	tickit_window_close(rt);
