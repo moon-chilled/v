@@ -196,6 +196,7 @@ void init_v(V *v) {
 	v->km_normal.ascii['w'] = motion_wordforward;
 	v->km_normal.ascii['b'] = motion_wordback;
 	v->km_normal.ascii['d'] = hof_delete;
+	v->km_normal.ascii['o'] = transform_add_nl;
 }
 
 int main(void) {

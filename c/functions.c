@@ -74,14 +74,19 @@ Function motion_wordback(const V *v) { return new_motion(move_wordback); }
 
 static void perform_ins_nl(V *v, void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);
+        usz l = v->b.tb.lines[v->b.loc.y - 1].l - v->b.loc.x;
+        tb_insert(&v->b.tb, v->b.loc.y, 0, v->b.tb.lines[v->b.loc.y - 1].glyphs + v->b.loc.x, l);
+        tb_remove(&v->b.tb, v->b.loc.y - 1, v->b.loc.x, l);
         v->b.loc.x = 0;
 }
 static void undo_ins_nl(V *v, void *state) {
-	tb_remove_line(&v->b.tb, v->b.loc.y--);
-	v->b.loc.x = (usz)state;
+	v->b.loc.y--;
+	v->b.loc.x = v->b.tb.lines[v->b.loc.y].l;
+	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, v->b.tb.lines[v->b.loc.y + 1].glyphs, v->b.tb.lines[v->b.loc.y + 1].l);
+	tb_remove_line(&v->b.tb, v->b.loc.y + 1);
 }
 Function transform_ins_nl(const V *v) {
-	return new_transformation((void*)v->b.loc.x, perform_ins_nl, undo_ins_nl);
+	return new_transformation(NULL, perform_ins_nl, undo_ins_nl);
 }
 
 static void perform_add_nl(V *v, void *state) {
