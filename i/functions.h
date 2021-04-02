@@ -2,11 +2,12 @@
 #define CV_FUNCTIONS_H
 
 typedef enum {
-	TypeNil = 0,            // Bottom
-	TypeStr = 0x1,          // () -> Str.             e.g. the parameter to '/'.  (And 'i', sort of.)
-	TypeChar = 0x2,         // () -> Char.            e.g. the parameter to 'r' or 't'
-	TypeMotion = 0x4,       // (TB,Loc) -> Loc.       e.g. 'w'
-	TypeTransform = 0x8,    // (TB,Loc) -> (TB,Loc).  e.g. 'x'
+	TypeNil,          // Bottom.  Also ⊤?
+	TypeStr,          // () -> Str.             e.g. the parameter to '/'.  (And 'i', sort of.)
+	TypeChar,         // () -> Char.            e.g. the parameter to 'r' or 't'
+	TypeMotion,       // (TB,Loc) -> Loc.       e.g. 'w'
+	TypeTransform,    // (TB,Loc) -> (TB,Loc).  e.g. 'x'
+	TypeFunction,
 	// todo text objects?
 	// can they replace motions with an implicit 'move' transformation?  (I
 	// kinda like that, need to figure out the relationship to input,
@@ -17,9 +18,8 @@ typedef enum {
 
 typedef struct Type Type;
 struct Type {
-	TypeType ret;     //strict
-	usz arity;
-	Type *param;      //specifies constraints
+	TypeType type;
+	Type *fn; // (parm,ret)
 };
 
 typedef struct Function Function;
@@ -37,9 +37,8 @@ struct Function {
 		} action;
 		struct {
 			void *state;
-			//needs Function *ret, which is a dummy but still mostly correct.  (ret can be bottom?)  (ret can be bottom if unknowable?)
 			Function (*transform)(const V *v, void *state, const Function *other);
-		} higher_order;
+		} function;
 	};
 };
 
@@ -47,7 +46,19 @@ static inline Function new_str(const glyph *s, usz l) { return (Function){.type=
 static inline Function new_char(glyph g) { return (Function){.type={TypeChar}, .character=g}; }
 static inline Function new_motion(Loc (*motion)(const V*)) { return (Function){.type={TypeMotion}, .motion=motion}; }
 static inline Function new_transformation(void *state, void (*perform)(V*,void*), void (*undo)(V*,void*)) { return (Function){.type={TypeTransform}, .action={.state=state, .perform=perform, .undo=undo}}; }
-static inline Function new_hof(void *state, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) { return (Function){.type={.ret=ret, .arity=1, .param=onew(Type, .ret=parameter)}, .higher_order={.state=state, .transform=transform}}; } //todo nice 'cpy'
+static inline Function new_function(void *state, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {
+	assert (ret != TypeFunction && parameter != TypeFunction);
+
+	Function f = {0};
+	f.type.type = TypeFunction;
+	f.type.fn = new(Type, 2);
+	f.type.fn[0].type = parameter;
+	f.type.fn[1].type = ret;
+	f.function.state = state;
+	f.function.transform = transform;
+
+	return f;
+}
 
 Function motion_cleft(const V*), motion_cright(const V*), motion_cup(const V*), motion_cdown(const V*);
 

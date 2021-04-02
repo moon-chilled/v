@@ -186,12 +186,11 @@ static void undo_delete(V *v, void *state) { assert(0); /*todo*/ }
 
 
 static Function deleter(const V *v, void *state, const Function *other) {
-	assert (other->type.ret == TypeMotion); //wg14 y u no HKT
-	assert (!other->type.arity);
+	assert (other->type.type == TypeMotion); //wg14 y u no HKT
 	Loc *nloc = new(Loc, 1);
 	*nloc = other->motion(v);
 	return new_transformation(nloc, perform_delete, undo_delete);
 }
 Function hof_delete(const V *v) {
-	return new_hof(NULL, TypeTransform, TypeMotion, deleter);
+	return new_function(NULL, TypeTransform, TypeMotion, deleter);
 }

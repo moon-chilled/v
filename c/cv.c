@@ -133,7 +133,7 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			}
 		}
 
-		if (f.type.ret) v_push(v, &f);
+		if (f.type.type) v_push(v, &f);
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
