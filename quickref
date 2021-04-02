@@ -2,9 +2,9 @@ Insert mode:
 arrow keys, backspace, delete, esc
 
 Normal mode:
-hjkl
-x
-i
-0$wb
+move:
+hjkl0$wb
+transform:
+xioOIA
+function:
 d
-oOIA
