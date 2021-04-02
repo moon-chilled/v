@@ -12,14 +12,14 @@ static Loc move_cleft(const V *v) {
 }
 static Loc move_cright(const V *v) {
         Loc r = v->b.loc;
-        if (r.x + (v->mode == ModeNormal) < v->b.tb.lines[r.y].l) r.x++;
+        if (r.x < v->b.tb.lines[r.y].l) r.x++;
         return r;
 }
 static Loc move_cdown(const V *v) {
         Loc r = v->b.loc;
         if (r.y+1 < v->b.tb.l) {
                 r.y++;
-                r.x = min(r.x, v->b.tb.lines[/*++*/r.y].l - (v->mode == ModeNormal)); //wg14 y u no ({})
+                r.x = min(r.x, v->b.tb.lines[/*++*/r.y].l); //wg14 y u no ({})
         }
         return r;
 }
@@ -27,13 +27,13 @@ static Loc move_cup(const V *v) {
         Loc r = v->b.loc;
         if (r.y) {
                 r.y--;
-                r.x = min(r.x, v->b.tb.lines[r.y].l - (v->mode == ModeNormal));
+                r.x = min(r.x, v->b.tb.lines[r.y].l);
         }
         return r;
 }
 static Loc move_eol(const V *v) {
 	Loc r = v->b.loc;
-	r.x = v->b.tb.lines[r.y].l - (v->mode == ModeNormal);
+	r.x = v->b.tb.lines[r.y].l;
 	return r;
 }
 static Loc move_bol(const V *v) {
@@ -44,10 +44,10 @@ static Loc move_bol(const V *v) {
 static Loc move_wordforward(const V *v) {
 	Loc r = v->b.loc;
 	TextBuffer tb = v->b.tb;
-	while (r.x + (v->mode == ModeNormal) < tb.lines[r.y].l && !is_space(tb.lines[r.y].glyphs[r.x])) {
+	while (r.x < tb.lines[r.y].l && !is_space(tb.lines[r.y].glyphs[r.x])) {
 		r.x++;
 	}
-	while (r.x + (v->mode == ModeNormal) < tb.lines[r.y].l && is_space(tb.lines[r.y].glyphs[r.x])) {
+	while (r.x < tb.lines[r.y].l && is_space(tb.lines[r.y].glyphs[r.x])) {
 		r.x++;
 	}
 	return r;
@@ -126,11 +126,7 @@ static void undo_modeswitch(V *v, void *state) {
 }
 
 static void perform_insert(V *v, void *state) { v->mode = ModeInsert; }
-static void perform_normal(V *v, void *state) {
-	v->mode = ModeNormal;
-	v->b.loc.x = min(v->b.loc.x+1, v->b.tb.lines[v->b.loc.y].l);
-	if (v->b.loc.x) v->b.loc.x--;
-}
+static void perform_normal(V *v, void *state) { v->mode = ModeNormal; }
 Function transform_insert(const V *v) { return new_transformation((void*)(usz)v->mode, perform_insert, undo_modeswitch); }
 Function transform_normal(const V *v) { return new_transformation((void*)(usz)v->mode, perform_normal, undo_modeswitch); }
 

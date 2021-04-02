@@ -108,17 +108,60 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 
 	return 1;
 }
+
+/* from https://github.com/tmux/tmux/pull/432 */
+static int rgb_to_256(u4 clr) {
+	u1 r = clr >> 16, g = clr >> 8, b = clr;
+	/* Calculate the nearest 0-based colour index at 16 .. 231 */
+#define v2ci(v) (v < 48 ? 0 : v < 115 ? 1 : (v - 35) / 40)
+	int ir = v2ci(r), ig = v2ci(g), ib = v2ci(b);   /* 0..5 each */
+#define colour_index() (36 * ir + 6 * ig + ib)  /* 0..215, lazy evaluation */
+
+	/* Calculate the nearest 0-based gray index at 232 .. 255 */
+	int average = (r + g + b) / 3;
+	int gray_index = average > 238 ? 23 : (average - 3) / 10;  /* 0..23 */
+
+	/* Calculate the represented colours back from the index */
+	static const int i2cv[6] = {0, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
+	int cr = i2cv[ir], cg = i2cv[ig], cb = i2cv[ib];  /* r/g/b, 0..255 each */
+	int gv = 8 + 10 * gray_index;  // same value for r/g/b, 0..255
+
+	/* Return the one which is nearer to the original input rgb value */
+#define dist_square(A,B,C, a,b,c) ((A-a)*(A-a) + (B-b)*(B-b) + (C-c)*(C-c))
+	int colour_err = dist_square(cr, cg, cb, r, g, b);
+	int gray_err  = dist_square(gv, gv, gv, r, g, b);
+	return colour_err <= gray_err ? 16 + colour_index() : 232 + gray_index;
+#undef dist_square
+#undef colour_index
+#undef v2ci
+}
+
+static void set_pen_colour(TickitPen *p, u4 clr) {
+	tickit_pen_set_colour_attr(p, TICKIT_PEN_FG, rgb_to_256(clr));
+	tickit_pen_set_colour_attr_rgb8(p, TICKIT_PEN_FG, (TickitPenRGB8){clr>>16, clr>>8, clr});
+}
+
 static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *data) {
 	TickitExposeEventInfo *info = _info;
 	V *v = data;
 	tickit_renderbuffer_clear(info->rb);
 
+	TickitPen *normal = tickit_pen_new();
+	TickitPen *eol = tickit_pen_new();
+	set_pen_colour(eol, 0x0090ee);
+
 	for (usz i = 0; i < v->b.tb.l; i++) {
+		tickit_renderbuffer_setpen(info->rb, normal);
 		for (usz j = 0; j < v->b.tb.lines[i].l; j++) {
 			tickit_renderbuffer_char_at(info->rb, i, j, v->b.tb.lines[i].glyphs[j]);
 		}
+		tickit_renderbuffer_setpen(info->rb, eol);
+		tickit_renderbuffer_char_at(info->rb, i, v->b.tb.lines[i].l, '$');
 	}
 	tickit_window_set_cursor_position(win, v->b.loc.y, v->b.loc.x);
+
+	tickit_pen_unref(normal);
+	tickit_pen_unref(eol);
 
 	return 1;
 }
