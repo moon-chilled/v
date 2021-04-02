@@ -2,12 +2,13 @@
 #define CV_FUNCTIONS_H
 
 typedef enum {
-	TypeNil,          // Bottom.  Also ⊤?
+	TypeBottom,
 	TypeStr,          // () -> Str.             e.g. the parameter to '/'.  (And 'i', sort of.)
 	TypeChar,         // () -> Char.            e.g. the parameter to 'r' or 't'
 	TypeMotion,       // (TB,Loc) -> Loc.       e.g. 'w'
 	TypeTransform,    // (TB,Loc) -> (TB,Loc).  e.g. 'x'
 	TypeFunction,
+	TypeTop,
 	// todo text objects?
 	// can they replace motions with an implicit 'move' transformation?  (I
 	// kinda like that, need to figure out the relationship to input,
