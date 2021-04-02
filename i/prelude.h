@@ -24,6 +24,7 @@ typedef  int64_t s8;
 typedef char32_t glyph;
 
 #define new(T,n) ((T*)GC_malloc(sizeof(T)*(n)))
+#define onew(T,...) ((T*)memcpy(GC_malloc(sizeof(T)),&(T){__VA_ARGS__},sizeof(T)))
 
 #define min(_x, _y) ((_x) < (_y) ? (_x) : (_y))
 #define max(_x, _y) ((_x) > (_y) ? (_x) : (_y))

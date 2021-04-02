@@ -32,7 +32,7 @@ typedef struct {
 
 struct V {
 	char newest_message[4096];
-	TickitWindow *message_window, *text_window;
+	TickitWindow *message_window, *mode_window, *text_window;
 	Buffer b;
 	Mode mode;
 	Keymap km_normal, km_insert;

@@ -47,7 +47,7 @@ static inline Function new_str(const glyph *s, usz l) { return (Function){.type=
 static inline Function new_char(glyph g) { return (Function){.type={TypeChar}, .character=g}; }
 static inline Function new_motion(Loc (*motion)(const V*)) { return (Function){.type={TypeMotion}, .motion=motion}; }
 static inline Function new_transformation(void *state, void (*perform)(V*,void*), void (*undo)(V*,void*)) { return (Function){.type={TypeTransform}, .action={.state=state, .perform=perform, .undo=undo}}; }
-static inline Function new_hof(void *state, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) { return (Function){.type={.ret=ret, .arity=1, .param=memcpy(new(Type,1),&(Type){.ret=parameter},sizeof(Type))}, .higher_order={.state=state, .transform=transform}}; } //todo nice 'cpy'
+static inline Function new_hof(void *state, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) { return (Function){.type={.ret=ret, .arity=1, .param=onew(Type, .ret=parameter)}, .higher_order={.state=state, .transform=transform}}; } //todo nice 'cpy'
 
 Function motion_cleft(const V*), motion_cright(const V*), motion_cup(const V*), motion_cdown(const V*);
 
@@ -55,8 +55,9 @@ typedef Function (Actor)(const V *b);
 Actor motion_cleft, motion_cright, motion_cup, motion_cdown;
 Actor motion_bol, motion_eol;
 Actor motion_wordforward, motion_wordback;
-Actor transform_ins_nl, transform_add_nl, transform_delback, transform_delforward;
+Actor transform_ins_nl, transform_prep_nl, transform_add_nl, transform_delback, transform_delforward;
 Actor transform_insert, transform_normal;
+Actor transform_insert_front, transform_insert_back;
 Actor hof_delete;
 
 void apply_transformation(V *b, const Function *f);

@@ -1,5 +1,3 @@
-#define _GNU_SOURCE //strdup, asprintf
-
 #include "v.h"
 
 usz utf8d1(glyph *o, const unsigned char *i) {
@@ -59,12 +57,54 @@ static bool tickit_to_key(const char *s, SpecialKey *k) {
 	if (!strcmp(s, "Escape")) return *k = SpecialKeyEscape;
 	return false;
 }
+/* from https://github.com/tmux/tmux/pull/432 */
+static int rgb_to_256(u4 clr) {
+	u1 r = clr >> 16, g = clr >> 8, b = clr;
+	/* Calculate the nearest 0-based colour index at 16 .. 231 */
+#define v2ci(v) (v < 48 ? 0 : v < 115 ? 1 : (v - 35) / 40)
+	int ir = v2ci(r), ig = v2ci(g), ib = v2ci(b);   /* 0..5 each */
+#define colour_index() (36 * ir + 6 * ig + ib)  /* 0..215, lazy evaluation */
+
+	/* Calculate the nearest 0-based gray index at 232 .. 255 */
+	int average = (r + g + b) / 3;
+	int gray_index = average > 238 ? 23 : (average - 3) / 10;  /* 0..23 */
+
+	/* Calculate the represented colours back from the index */
+	static const int i2cv[6] = {0, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
+	int cr = i2cv[ir], cg = i2cv[ig], cb = i2cv[ib];  /* r/g/b, 0..255 each */
+	int gv = 8 + 10 * gray_index;  // same value for r/g/b, 0..255
+
+	/* Return the one which is nearer to the original input rgb value */
+#define dist_square(A,B,C, a,b,c) ((A-a)*(A-a) + (B-b)*(B-b) + (C-c)*(C-c))
+	int colour_err = dist_square(cr, cg, cb, r, g, b);
+	int gray_err  = dist_square(gv, gv, gv, r, g, b);
+	return colour_err <= gray_err ? 16 + colour_index() : 232 + gray_index;
+#undef dist_square
+#undef colour_index
+#undef v2ci
+}
+static void set_pen_colour(TickitPen *p, u4 clr) {
+	tickit_pen_set_colour_attr(p, TICKIT_PEN_FG, rgb_to_256(clr));
+	tickit_pen_set_colour_attr_rgb8(p, TICKIT_PEN_FG, (TickitPenRGB8){clr>>16, clr>>8, clr});
+}
 
 static int msgwin_render(TickitWindow *win, TickitEventFlags flags, void *_info, void *data) {
 	V *v = data;
 	TickitExposeEventInfo *info = _info;
 	tickit_renderbuffer_clear(info->rb);
 	tickit_renderbuffer_text_at(info->rb, 0, 0, v->newest_message);
+	return 1;
+}
+static int mode_render(TickitWindow *win, TickitEventFlags flags, void *_info, void *data) {
+	V *v = data;
+	TickitExposeEventInfo *info = _info;
+	tickit_renderbuffer_clear(info->rb);
+	TickitPen *p = tickit_pen_new();
+	tickit_pen_set_bool_attr(p, TICKIT_PEN_UNDER, true);
+	set_pen_colour(p, 0x4c4c4c);
+	tickit_renderbuffer_setpen(info->rb, p);
+	tickit_renderbuffer_text_at(info->rb, 0, 0, v->mode == ModeNormal ? "normal" : "insert");
+	tickit_pen_unref(p);
 	return 1;
 }
 
@@ -109,38 +149,6 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	return 1;
 }
 
-/* from https://github.com/tmux/tmux/pull/432 */
-static int rgb_to_256(u4 clr) {
-	u1 r = clr >> 16, g = clr >> 8, b = clr;
-	/* Calculate the nearest 0-based colour index at 16 .. 231 */
-#define v2ci(v) (v < 48 ? 0 : v < 115 ? 1 : (v - 35) / 40)
-	int ir = v2ci(r), ig = v2ci(g), ib = v2ci(b);   /* 0..5 each */
-#define colour_index() (36 * ir + 6 * ig + ib)  /* 0..215, lazy evaluation */
-
-	/* Calculate the nearest 0-based gray index at 232 .. 255 */
-	int average = (r + g + b) / 3;
-	int gray_index = average > 238 ? 23 : (average - 3) / 10;  /* 0..23 */
-
-	/* Calculate the represented colours back from the index */
-	static const int i2cv[6] = {0, 0x5f, 0x87, 0xaf, 0xd7, 0xff};
-	int cr = i2cv[ir], cg = i2cv[ig], cb = i2cv[ib];  /* r/g/b, 0..255 each */
-	int gv = 8 + 10 * gray_index;  // same value for r/g/b, 0..255
-
-	/* Return the one which is nearer to the original input rgb value */
-#define dist_square(A,B,C, a,b,c) ((A-a)*(A-a) + (B-b)*(B-b) + (C-c)*(C-c))
-	int colour_err = dist_square(cr, cg, cb, r, g, b);
-	int gray_err  = dist_square(gv, gv, gv, r, g, b);
-	return colour_err <= gray_err ? 16 + colour_index() : 232 + gray_index;
-#undef dist_square
-#undef colour_index
-#undef v2ci
-}
-
-static void set_pen_colour(TickitPen *p, u4 clr) {
-	tickit_pen_set_colour_attr(p, TICKIT_PEN_FG, rgb_to_256(clr));
-	tickit_pen_set_colour_attr_rgb8(p, TICKIT_PEN_FG, (TickitPenRGB8){clr>>16, clr>>8, clr});
-}
-
 static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *data) {
 	TickitExposeEventInfo *info = _info;
 	V *v = data;
@@ -162,6 +170,8 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 
 	tickit_pen_unref(normal);
 	tickit_pen_unref(eol);
+
+	tickit_window_expose(v->mode_window, NULL); //todo
 
 	return 1;
 }
@@ -195,8 +205,12 @@ void init_v(V *v) {
 	v->km_normal.ascii['$'] = motion_eol;
 	v->km_normal.ascii['w'] = motion_wordforward;
 	v->km_normal.ascii['b'] = motion_wordback;
-	v->km_normal.ascii['d'] = hof_delete;
 	v->km_normal.ascii['o'] = transform_add_nl;
+	v->km_normal.ascii['O'] = transform_prep_nl;
+	v->km_normal.ascii['d'] = hof_delete;
+	v->km_normal.ascii['I'] = transform_insert_front;
+	v->km_normal.ascii['A'] = transform_insert_back;
+	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 }
 
 int main(void) {
@@ -205,11 +219,15 @@ int main(void) {
 
 	Tickit *t = tickit_new_stdio();
 	TickitWindow *rt = tickit_get_rootwin(t);
-	v->text_window = tickit_window_new(rt, (TickitRect){.top = 0, .left = 0, .lines = tickit_window_lines(rt) - 1, .cols = tickit_window_cols(rt)}, 0);
+	v->text_window = tickit_window_new(rt, (TickitRect){.top = 0, .left = 0, .lines = tickit_window_lines(rt) - 2, .cols = tickit_window_cols(rt)}, 0);
+	v->mode_window = tickit_window_new(rt, (TickitRect){.top = tickit_window_lines(rt) - 2, .left = 0, .lines = 1, .cols = tickit_window_cols(rt)}, 0);
 	v->message_window = tickit_window_new(rt, (TickitRect){.top = tickit_window_lines(rt) - 1, .left = 0, .lines = 1, .cols = tickit_window_cols(rt)}, 0);
+	tickit_window_set_cursor_shape(v->text_window, TICKIT_CURSORSHAPE_LEFT_BAR);
 	//tickit_term_setctl_int(tickit_window_get_term(rt), TICKIT_TERMCTL_CURSORSHAPE, TICKIT_CURSORSHAPE_LEFT_BAR);
 	tickit_window_show(v->text_window);
 	tickit_window_show(v->message_window);
+
+	tickit_window_bind_event(v->mode_window, TICKIT_WINDOW_ON_EXPOSE, 0, mode_render, v);
 
 	tickit_window_bind_event(v->message_window, TICKIT_WINDOW_ON_EXPOSE, 0, msgwin_render, v);
 
@@ -217,7 +235,8 @@ int main(void) {
 	tickit_window_bind_event(v->text_window, TICKIT_WINDOW_ON_EXPOSE, 0, render, v);
 	tickit_window_take_focus(v->text_window);
 	tickit_run(t);
-	//tickit_term_setctl_int(tickit_window_get_term(rt), TICKIT_TERMCTL_CURSORSHAPE, TICKIT_CURSORSHAPE_BLOCK);
+	tickit_term_setctl_int(tickit_window_get_term(rt), TICKIT_TERMCTL_CURSORSHAPE, TICKIT_CURSORSHAPE_BLOCK);
 	tickit_window_close(rt);
 	tickit_unref(t);
+
 }

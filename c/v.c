@@ -34,6 +34,7 @@ usz fmt_type(char *buf, Type type) {
 	return n - buf;
 }
 
+//todo actually push if f is hof and v->current
 void v_push(V *v, Function *f) {
 	if (!v->current) {
 		v->current = new(Function, 1);

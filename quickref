@@ -1,0 +1,10 @@
+Insert mode:
+arrow keys, backspace, delete, esc
+
+Normal mode:
+hjkl
+x
+i
+0$wb
+d
+oOIA
