@@ -5,17 +5,17 @@ static bool is_space(glyph g) {
 	return g == ' ' || g == '\t' || g == '\n' || g == '\r' || g == '\f';
 }
 
-static Loc move_cleft(const V *v) {
+static Loc move_cleft(const V *v, const void *s) {
         Loc r = v->b.loc;
         if (r.x) r.x--;
         return r;
 }
-static Loc move_cright(const V *v) {
+static Loc move_cright(const V *v, const void *s) {
         Loc r = v->b.loc;
         if (r.x < v->b.tb.lines[r.y].l) r.x++;
         return r;
 }
-static Loc move_cdown(const V *v) {
+static Loc move_cdown(const V *v, const void *s) {
         Loc r = v->b.loc;
         if (r.y+1 < v->b.tb.l) {
                 r.y++;
@@ -23,7 +23,7 @@ static Loc move_cdown(const V *v) {
         }
         return r;
 }
-static Loc move_cup(const V *v) {
+static Loc move_cup(const V *v, const void *s) {
         Loc r = v->b.loc;
         if (r.y) {
                 r.y--;
@@ -31,17 +31,17 @@ static Loc move_cup(const V *v) {
         }
         return r;
 }
-static Loc move_eol(const V *v) {
+static Loc move_eol(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	r.x = v->b.tb.lines[r.y].l;
 	return r;
 }
-static Loc move_bol(const V *v) {
+static Loc move_bol(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	r.x = 0;
 	return r;
 }
-static Loc move_wordforward(const V *v) {
+static Loc move_wordforward(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	TextBuffer tb = v->b.tb;
 	while (r.x < tb.lines[r.y].l && !is_space(tb.lines[r.y].glyphs[r.x])) {
@@ -52,7 +52,7 @@ static Loc move_wordforward(const V *v) {
 	}
 	return r;
 }
-static Loc move_wordback(const V *v) {
+static Loc move_wordback(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	TextBuffer tb = v->b.tb;
 	while (r.x && is_space(tb.lines[r.y].glyphs[r.x-1])) {
@@ -63,14 +63,37 @@ static Loc move_wordback(const V *v) {
 	}
 	return r;
 }
-Function motion_cleft(const V *v) { return new_motion(move_cleft); }
-Function motion_cright(const V *v) { return new_motion(move_cright); }
-Function motion_cup(const V *v) { return new_motion(move_cup); }
-Function motion_cdown(const V *v) { return new_motion(move_cdown); }
-Function motion_eol(const V *v) { return new_motion(move_eol); }
-Function motion_bol(const V *v) { return new_motion(move_bol); }
-Function motion_wordforward(const V *v) { return new_motion(move_wordforward); }
-Function motion_wordback(const V *v) { return new_motion(move_wordback); }
+Function motion_cleft(const V *v) { return new_motion(NULL, move_cleft); }
+Function motion_cright(const V *v) { return new_motion(NULL, move_cright); }
+Function motion_cup(const V *v) { return new_motion(NULL, move_cup); }
+Function motion_cdown(const V *v) { return new_motion(NULL, move_cdown); }
+Function motion_eol(const V *v) { return new_motion(NULL, move_eol); }
+Function motion_bol(const V *v) { return new_motion(NULL, move_bol); }
+Function motion_wordforward(const V *v) { return new_motion(NULL, move_wordforward); }
+Function motion_wordback(const V *v) { return new_motion(NULL, move_wordback); }
+
+
+
+#if 0
+static Loc mov_until(const V *v, const void *s) {
+	Loc r = v->b.loc;
+	glyph g = (glyph)(usz)s;
+	usz x = r.x;
+	while (x+1 < tb.lines[r.y].l && tb.lines[r.y].glyphs[x+1] != g) {
+		x++;
+	}
+
+	if (tb.lines[r.y].glyphs[x+1] == g) r.x = x;
+	return r;
+}
+
+static Function mover_until(const V *v, void *state, const Function *other) {
+	assert (other->type.type == TypeChar);
+	return new_motion((void*)(usz)other->character, move_until);
+}
+#endif
+
+
 
 static void perform_ins_nl(V *v, void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);
@@ -188,9 +211,10 @@ static void undo_delete(V *v, void *state) { assert(0); /*todo*/ }
 static Function deleter(const V *v, void *state, const Function *other) {
 	assert (other->type.type == TypeMotion); //wg14 y u no HKT
 	Loc *nloc = new(Loc, 1);
-	*nloc = other->motion(v);
+	*nloc = other->motion.perform(v, other->motion.state);
 	return new_transformation(nloc, perform_delete, undo_delete);
 }
 Function hof_delete(const V *v) {
-	return new_function(NULL, TypeTransform, TypeMotion, deleter);
+	return new_function(NULL, ModeDefault, TypeTransform, TypeMotion, deleter);
 }
+

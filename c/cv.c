@@ -115,6 +115,22 @@ void msg(V *v, const char *fmt, ...) {
 	tickit_window_expose(v->message_window, NULL);
 }
 
+Actor *lookupg(V *v, glyph g) {
+	if (g >= 128) return NULL;
+	if ((v->mode & ModeMotion) && v->km_motion.ascii[g]) return v->km_motion.ascii[g];
+	if ((v->mode & ModeTransform) && v->km_transform.ascii[g]) return v->km_transform.ascii[g];
+	if ((v->mode & ModeFunction) && v->km_function.ascii[g]) return v->km_function.ascii[g];
+	return NULL;
+}
+Actor *lookup_special(V *v, SpecialKey k) {
+	if ((v->mode & ModeMotion) && v->km_motion.special[k]) return v->km_motion.special[k];
+	if ((v->mode & ModeTransform) && v->km_transform.special[k]) return v->km_transform.special[k];
+	if ((v->mode & ModeFunction) && v->km_function.special[k]) return v->km_function.special[k];
+
+	if (v->mode == ModeInsert) return v->km_insert.special[k];
+	return NULL;
+}
+
 static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *data) {
 	TickitKeyEventInfo *info = _info;
 	V *v = data;
@@ -128,18 +144,17 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			f = new_str(new, l);
 		} else {
 			assert(l == 1);
-			if (*new < 128 && v->km_normal.ascii[*new]) {
-				f = v->km_normal.ascii[*new](v);
-			}
+			Actor *a = lookupg(v, *new);
+			if (a) f = a(v);
 		}
 
 		if (f.type.type) v_push(v, &f);
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
-		Keymap *km = v->mode == ModeInsert ? &v->km_insert : &v->km_normal;
-		if (km->special[k]) {
-			Function f = km->special[k](v);
+		Actor *a = lookup_special(v, k);
+		if (a) {
+			Function f = a(v);
 			v_push(v, &f);
 		}
 	}
@@ -194,22 +209,22 @@ void init_v(V *v) {
 	v->km_insert.special[SpecialKeyDelete] = transform_delforward;
 	v->km_insert.special[SpecialKeyEscape] = transform_normal;
 
-	v->km_normal.ascii['x'] = transform_delforward;
-	v->km_normal.ascii['i'] = transform_insert;
+	v->km_motion.ascii['h'] = motion_cleft;
+	v->km_motion.ascii['j'] = motion_cdown;
+	v->km_motion.ascii['k'] = motion_cup;
+	v->km_motion.ascii['l'] = motion_cright;
+	v->km_motion.ascii['0'] = motion_bol;
+	v->km_motion.ascii['$'] = motion_eol;
+	v->km_motion.ascii['w'] = motion_wordforward;
+	v->km_motion.ascii['b'] = motion_wordback;
+	v->km_transform.ascii['x'] = transform_delforward;
+	v->km_transform.ascii['i'] = transform_insert;
+	v->km_transform.ascii['o'] = transform_add_nl;
+	v->km_transform.ascii['O'] = transform_prep_nl;
+	v->km_transform.ascii['I'] = transform_insert_front;
+	v->km_transform.ascii['A'] = transform_insert_back;
 
-	v->km_normal.ascii['h'] = motion_cleft;
-	v->km_normal.ascii['j'] = motion_cdown;
-	v->km_normal.ascii['k'] = motion_cup;
-	v->km_normal.ascii['l'] = motion_cright;
-	v->km_normal.ascii['0'] = motion_bol;
-	v->km_normal.ascii['$'] = motion_eol;
-	v->km_normal.ascii['w'] = motion_wordforward;
-	v->km_normal.ascii['b'] = motion_wordback;
-	v->km_normal.ascii['o'] = transform_add_nl;
-	v->km_normal.ascii['O'] = transform_prep_nl;
-	v->km_normal.ascii['d'] = hof_delete;
-	v->km_normal.ascii['I'] = transform_insert_front;
-	v->km_normal.ascii['A'] = transform_insert_back;
+	v->km_transform.ascii['d'] = hof_delete; //transform is right?
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 }
 

@@ -30,7 +30,10 @@ struct Function {
 	union {
 		struct { const glyph *s; usz l; } str;
 		glyph character;
-		Loc (*motion)(const V *v);
+		struct {
+			const void *state;
+			Loc (*perform)(const V *v, const void *state);
+		} motion;
 		struct {
 			void *state; //todo serialize?
 			void (*perform)(V *v, void *state);
@@ -38,16 +41,17 @@ struct Function {
 		} action;
 		struct {
 			void *state;
-			Function (*transform)(const V *v, void *state, const Function *other);
+			Mode mode;
+			Function (*transform)(const V *v, void *state, const Function *other); //todo self to refine bot/top type
 		} function;
 	};
 };
 
 static inline Function new_str(const glyph *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
 static inline Function new_char(glyph g) { return (Function){.type={TypeChar}, .character=g}; }
-static inline Function new_motion(Loc (*motion)(const V*)) { return (Function){.type={TypeMotion}, .motion=motion}; }
+static inline Function new_motion(const void *state, Loc (*perform)(const V*,const void*)) { return (Function){.type={TypeMotion}, .motion={.state=state, .perform=perform}}; }
 static inline Function new_transformation(void *state, void (*perform)(V*,void*), void (*undo)(V*,void*)) { return (Function){.type={TypeTransform}, .action={.state=state, .perform=perform, .undo=undo}}; }
-static inline Function new_function(void *state, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {
+static inline Function new_function(void *state, Mode mode, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {
 	assert (ret != TypeFunction && parameter != TypeFunction);
 
 	Function f = {0};
@@ -56,6 +60,7 @@ static inline Function new_function(void *state, TypeType ret, TypeType paramete
 	f.type.fn[0].type = parameter;
 	f.type.fn[1].type = ret;
 	f.function.state = state;
+	f.function.mode = mode;
 	f.function.transform = transform;
 
 	return f;

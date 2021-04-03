@@ -3,6 +3,16 @@
 
 typedef struct V V;
 
+typedef enum {
+	ModeDefault = -1,
+	ModeInsert = 0,
+	ModeMotion = 0x1,
+	ModeTransform = 0x2,
+	ModeFunction = 0x4,
+
+	ModeNormal = ModeMotion | ModeTransform | ModeFunction, //todo this needs an ordering
+} Mode;
+
 #include <tickit.h>
 #include "prelude.h"
 #include "text-buffer.h"
@@ -20,11 +30,6 @@ typedef enum {
 	SpecialKeyMax,
 } SpecialKey;
 
-typedef enum {
-	ModeNormal,
-	ModeInsert,
-} Mode;
-
 typedef struct {
 	Actor *ascii[128];
 	Actor *special[SpecialKeyMax];
@@ -35,9 +40,15 @@ struct V {
 	TickitWindow *message_window, *mode_window, *text_window;
 	Buffer b;
 	Mode mode;
-	Keymap km_normal, km_insert;
 
-	Function *current;
+	Keymap km_motion, km_transform, km_function;
+	Keymap km_insert; //only for specials
+
+	struct {
+		Function f;
+		Mode old_mode;
+	} *stack;
+	usz sp;
 };
 
 void msg(V *v, const char *fmt, ...);
