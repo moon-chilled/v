@@ -139,16 +139,22 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 		usz l;
 		const glyph *new = from_utf8((const unsigned char*)info->str, &l);
 
-		Function f = {0};
 		if (v->mode == ModeInsert) {
-			f = new_str(new, l);
+			for (usz i = 0; i < l; i++) {
+				Function f = new_char(new[i]);
+				v_push(v, &f);
+			}
 		} else {
-			assert(l == 1);
-			Actor *a = lookupg(v, *new);
-			if (a) f = a(v);
+			for (usz i = 0; i < l; i++) {
+				Actor *a = lookupg(v, new[i]);
+				if (a) {
+					Function f = a(v);
+					v_push(v, &f);
+				} else {
+					msg(v, "No such command '%c'", new[i]);
+				}
+			}
 		}
-
-		if (f.type.type) v_push(v, &f);
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
@@ -159,7 +165,8 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 		}
 	}
 
-	if (v_reduce(v)) tickit_window_expose(win, NULL);
+	v_reduce(v);
+	tickit_window_expose(win, NULL);
 
 	return 1;
 }
@@ -224,7 +231,9 @@ void init_v(V *v) {
 	v->km_transform.ascii['I'] = transform_insert_front;
 	v->km_transform.ascii['A'] = transform_insert_back;
 
-	v->km_transform.ascii['d'] = hof_delete; //transform is right?
+	v->km_motion.ascii['t'] = hof_move_until;
+
+	v->km_transform.ascii['d'] = hof_delete;
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 }
 

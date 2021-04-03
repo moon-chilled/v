@@ -76,6 +76,7 @@ Actor transform_ins_nl, transform_prep_nl, transform_add_nl, transform_delback, 
 Actor transform_insert, transform_normal;
 Actor transform_insert_front, transform_insert_back;
 Actor hof_delete;
+Actor hof_move_until;
 
 void apply_transformation(V *b, const Function *f);
 

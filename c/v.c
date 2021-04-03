@@ -31,22 +31,30 @@ void v_push(V *v, Function *f) {
 bool v_reduce(V *v) {
 	bool ret = false;
 
-	while (v->sp >= 2 && type_compatible(&v->stack[v->sp-2].f.type.fn[0], &v->stack[v->sp-1].f.type)) {
-		ret = true;
+	while (true) {
+		while (v->sp >= 2 && type_compatible(&v->stack[v->sp-2].f.type.fn[0], &v->stack[v->sp-1].f.type)) {
+			ret = true;
 
-		v->mode = v->stack[v->sp-1].old_mode; // useless?
-		Function f = v->stack[v->sp-2].f.function.transform(v, v->stack[v->sp-2].f.function.state, &v->stack[v->sp-1].f);
-		v->mode = v->stack[v->sp-2].old_mode;
-		v->sp -= 2;
+			v->mode = v->stack[v->sp-1].old_mode; // useless?
+			Function f = v->stack[v->sp-2].f.function.transform(v, v->stack[v->sp-2].f.function.state, &v->stack[v->sp-1].f);
+			v->mode = v->stack[v->sp-2].old_mode;
+			v->sp -= 2;
 
-		v_push(v, &f);
+			v_push(v, &f);
+			continue;
+		}
+
+		if (v->sp && v->stack[v->sp-1].f.type.type != TypeFunction) {
+			ret = true;
+
+			apply_transformation(v, &v->stack[--v->sp].f);
+			continue;
+		}
+
+		break;
 	}
 
-	if (v->sp && v->stack[v->sp-1].f.type.type != TypeFunction) {
-		ret = true;
-
-		apply_transformation(v, &v->stack[--v->sp].f);
-	}
+	if (ret) msg(v, "");
 
 	return ret;
 }

@@ -74,26 +74,24 @@ Function motion_wordback(const V *v) { return new_motion(NULL, move_wordback); }
 
 
 
-#if 0
-static Loc mov_until(const V *v, const void *s) {
+static Loc move_until(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	glyph g = (glyph)(usz)s;
 	usz x = r.x;
-	while (x+1 < tb.lines[r.y].l && tb.lines[r.y].glyphs[x+1] != g) {
+	while (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] != g) {
 		x++;
 	}
 
-	if (tb.lines[r.y].glyphs[x+1] == g) r.x = x;
+	if (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] == g) r.x = x;
 	return r;
 }
-
 static Function mover_until(const V *v, void *state, const Function *other) {
 	assert (other->type.type == TypeChar);
 	return new_motion((void*)(usz)other->character, move_until);
 }
-#endif
-
-
+Function hof_move_until(const V *v) {
+	return new_function(NULL, ModeInsert, TypeMotion, TypeChar, mover_until);
+}
 
 static void perform_ins_nl(V *v, void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);
@@ -206,8 +204,6 @@ static void perform_delete(V *v, void *state) {
 	}
 }
 static void undo_delete(V *v, void *state) { assert(0); /*todo*/ }
-
-
 static Function deleter(const V *v, void *state, const Function *other) {
 	assert (other->type.type == TypeMotion); //wg14 y u no HKT
 	Loc *nloc = new(Loc, 1);
@@ -217,4 +213,3 @@ static Function deleter(const V *v, void *state, const Function *other) {
 Function hof_delete(const V *v) {
 	return new_function(NULL, ModeDefault, TypeTransform, TypeMotion, deleter);
 }
-
