@@ -31,8 +31,8 @@ typedef enum {
 } SpecialKey;
 
 typedef struct {
-	Actor *ascii[128];
-	Actor *special[SpecialKeyMax];
+	Function *ascii[128];
+	Function *special[SpecialKeyMax];
 } Keymap;
 
 struct V {

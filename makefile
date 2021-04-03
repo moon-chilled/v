@@ -1,4 +1,4 @@
-CFLAGS := -Ii -g -Wall -Wextra -Werror -Wno-unused-parameter -Wno-parentheses -std=c11
+CFLAGS := -Ii -g -Wall -Wextra -Werror -Wno-unused-parameter -Wno-parentheses -Wno-missing-field-initializers -std=c11
 CFLAGS += -MMD
 LFLAGS := -ltickit -lgc
 CCLD ?= $(CC)

@@ -36,8 +36,9 @@ struct Function {
 		} motion;
 		struct {
 			void *state; //todo serialize?
-			void (*perform)(V *v, void *state);
-			void (*undo)(V *v, void *state);
+			void (*prepare)(const V *v, void **state); //ex allocate, memoize...
+			void (*perform)(V *v, const void *state);
+			void (*undo)(V *v, const void *state);
 		} action;
 		struct {
 			void *state;
@@ -50,7 +51,7 @@ struct Function {
 static inline Function new_str(const glyph *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
 static inline Function new_char(glyph g) { return (Function){.type={TypeChar}, .character=g}; }
 static inline Function new_motion(const void *state, Loc (*perform)(const V*,const void*)) { return (Function){.type={TypeMotion}, .motion={.state=state, .perform=perform}}; }
-static inline Function new_transformation(void *state, void (*perform)(V*,void*), void (*undo)(V*,void*)) { return (Function){.type={TypeTransform}, .action={.state=state, .perform=perform, .undo=undo}}; }
+static inline Function new_transformation(void *state, void (*perpare)(const V*, void**), void (*perform)(V*,const void*), void (*undo)(V*,const void*)) { return (Function){.type={TypeTransform}, .action={.state=state, .perform=perform, .undo=undo}}; }
 static inline Function new_function(void *state, Mode mode, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {
 	assert (ret != TypeFunction && parameter != TypeFunction);
 
@@ -66,18 +67,15 @@ static inline Function new_function(void *state, Mode mode, TypeType ret, TypeTy
 	return f;
 }
 
-Function motion_cleft(const V*), motion_cright(const V*), motion_cup(const V*), motion_cdown(const V*);
+extern Function motion_cleft, motion_cright, motion_cup, motion_cdown;
+extern Function motion_bol, motion_eol;
+extern Function motion_wordforward, motion_wordback;
+extern Function transform_ins_nl, transform_prep_nl, transform_add_nl, transform_delback, transform_delforward;
+extern Function transform_insert, transform_normal;
+extern Function transform_insert_front, transform_insert_back;
+extern Function hof_delete;
+extern Function hof_move_until;
 
-typedef Function (Actor)(const V *b);
-Actor motion_cleft, motion_cright, motion_cup, motion_cdown;
-Actor motion_bol, motion_eol;
-Actor motion_wordforward, motion_wordback;
-Actor transform_ins_nl, transform_prep_nl, transform_add_nl, transform_delback, transform_delforward;
-Actor transform_insert, transform_normal;
-Actor transform_insert_front, transform_insert_back;
-Actor hof_delete;
-Actor hof_move_until;
-
-void apply_transformation(V *b, const Function *f);
+void apply_transformation(V *b, Function *f);
 
 #endif //CV_FUNCTIONS_H

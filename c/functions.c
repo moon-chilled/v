@@ -63,123 +63,20 @@ static Loc move_wordback(const V *v, const void *s) {
 	}
 	return r;
 }
-Function motion_cleft(const V *v) { return new_motion(NULL, move_cleft); }
-Function motion_cright(const V *v) { return new_motion(NULL, move_cright); }
-Function motion_cup(const V *v) { return new_motion(NULL, move_cup); }
-Function motion_cdown(const V *v) { return new_motion(NULL, move_cdown); }
-Function motion_eol(const V *v) { return new_motion(NULL, move_eol); }
-Function motion_bol(const V *v) { return new_motion(NULL, move_bol); }
-Function motion_wordforward(const V *v) { return new_motion(NULL, move_wordforward); }
-Function motion_wordback(const V *v) { return new_motion(NULL, move_wordback); }
+#define MOTION(n) Function motion_ ##n = {.type={TypeMotion}, .motion={.perform=move_ ## n}}
+MOTION(cleft);
+MOTION(cright);
+MOTION(cdown);
+MOTION(cup);
+MOTION(eol);
+MOTION(bol);
+MOTION(wordforward);
+MOTION(wordback);
+#undef MOTION
 
 
-
-static Loc move_until(const V *v, const void *s) {
-	Loc r = v->b.loc;
-	glyph g = (glyph)(usz)s;
-	usz x = r.x;
-	while (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] != g) {
-		x++;
-	}
-
-	if (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] == g) r.x = x;
-	return r;
-}
-static Function mover_until(const V *v, void *state, const Function *other) {
-	assert (other->type.type == TypeChar);
-	return new_motion((void*)(usz)other->character, move_until);
-}
-Function hof_move_until(const V *v) {
-	return new_function(NULL, ModeInsert, TypeMotion, TypeChar, mover_until);
-}
-
-static void perform_ins_nl(V *v, void *state) {
-        tb_insert_line(&v->b.tb, ++v->b.loc.y);
-        usz l = v->b.tb.lines[v->b.loc.y - 1].l - v->b.loc.x;
-        tb_insert(&v->b.tb, v->b.loc.y, 0, v->b.tb.lines[v->b.loc.y - 1].glyphs + v->b.loc.x, l);
-        tb_remove(&v->b.tb, v->b.loc.y - 1, v->b.loc.x, l);
-        v->b.loc.x = 0;
-}
-static void undo_ins_nl(V *v, void *state) {
-	v->b.loc.y--;
-	v->b.loc.x = v->b.tb.lines[v->b.loc.y].l;
-	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, v->b.tb.lines[v->b.loc.y + 1].glyphs, v->b.tb.lines[v->b.loc.y + 1].l);
-	tb_remove_line(&v->b.tb, v->b.loc.y + 1);
-}
-Function transform_ins_nl(const V *v) {
-	return new_transformation(NULL, perform_ins_nl, undo_ins_nl);
-}
-
-
-static void perform_add_nl(V *v, void *state) {
-        tb_insert_line(&v->b.tb, ++v->b.loc.y);
-        v->b.loc.x = 0;
-}
-static void undo_add_nl(V *v, void *state) {
-	tb_remove_line(&v->b.tb, v->b.loc.y--);
-	v->b.loc.x = (usz)state;
-}
-Function transform_add_nl(const V *v) {
-	return new_transformation((void*)v->b.loc.x, perform_add_nl, undo_add_nl);
-}
-
-static void perform_prep_nl(V *v, void *state) {
-	tb_insert_line(&v->b.tb, v->b.loc.y);
-	v->b.loc.x = 0;
-	v->mode = ModeInsert;
-}
-static void undo_prep_nl(V *v, void *state) {
-	undo_add_nl(v, state);
-	v->mode = ModeNormal; //todo wrong
-}
-Function transform_prep_nl(const V *v) {
-	return new_transformation((void*)v->b.loc.x, perform_prep_nl, undo_prep_nl);
-}
-
-static void perform_nothing(V *v, void *state) {}
-static void undo_nothing(V *v, void *state) {}
-
-static void perform_delback(V *v, void *state) {
-        tb_remove(&v->b.tb, v->b.loc.y, --v->b.loc.x, 1);
-}
-static void undo_delback(V *v, void *state) {
-	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x++, &(glyph){(glyph)(usz)state}, 1);
-}
-Function transform_delback(const V *v) {
-	if (!v->b.loc.x) return new_transformation(NULL, perform_nothing, undo_nothing);
-	return new_transformation((void*)(usz)v->b.tb.lines[v->b.loc.y].glyphs[v->b.loc.x-1], perform_delback, undo_delback);
-}
-
-static void perform_delforward(V *v, void *state) {
-	tb_remove(&v->b.tb, v->b.loc.y, v->b.loc.x, 1);
-}
-static void undo_delforward(V *v, void *state) {
-	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, &(glyph){(glyph)(usz)state}, 1);
-}
-Function transform_delforward(const V *v) {
-	if (v->b.loc.x >= v->b.tb.lines[v->b.loc.y].l) return new_transformation(NULL, perform_nothing, undo_nothing);
-	return new_transformation((void*)(usz)v->b.tb.lines[v->b.loc.y].glyphs[v->b.loc.x-1], perform_delforward, undo_delforward);
-}
-
-static void undo_modeswitch(V *v, void *state) {
-	v->mode = (Mode)(usz)state;
-}
-
-static void perform_insert(V *v, void *state) { v->mode = ModeInsert; }
-static void perform_normal(V *v, void *state) { v->mode = ModeNormal; }
-Function transform_insert(const V *v) { return new_transformation((void*)(usz)v->mode, perform_insert, undo_modeswitch); }
-Function transform_normal(const V *v) { return new_transformation((void*)(usz)v->mode, perform_normal, undo_modeswitch); }
-
-struct if_state { Mode old_mode; usz old_x; };
-static void perform_insert_front(V *v, void *state) { v->b.loc.x = 0; v->mode = ModeInsert; }
-static void perform_insert_back(V *v, void *state) { v->b.loc.x = v->b.tb.lines[v->b.loc.y].l; v->mode = ModeInsert; }
-static void undo_if(V *v, void *state) { struct if_state *s = state; v->b.loc.x = s->old_x; v->mode = s->old_mode; }
-Function transform_insert_front(const V *v) { return new_transformation(onew(struct if_state, .old_mode=v->mode, .old_x=v->b.loc.x), perform_insert_front, undo_if); }
-Function transform_insert_back(const V *v) { return new_transformation(onew(struct if_state, .old_mode=v->mode, .old_x=v->b.loc.x), perform_insert_back, undo_if); }
-
-
-static void perform_delete(V *v, void *state) {
-	Loc *dst = state;
+static void perform_delete(V *v, const void *state) {
+	const Loc *dst = state;
 	if (dst->y < v->b.loc.y) {
 		for (usz i = dst->y + 1; i < v->b.loc.y-1; i++) {
 			tb_remove_line(&v->b.tb, dst->y + 1);
@@ -203,13 +100,121 @@ static void perform_delete(V *v, void *state) {
 		tb_remove(&v->b.tb, dst->y, v->b.loc.x, dst->x - v->b.loc.x);
 	}
 }
-static void undo_delete(V *v, void *state) { assert(0); /*todo*/ }
+static void undo_delete(V *v, const void *state) { assert(0); /*todo*/ }
 static Function deleter(const V *v, void *state, const Function *other) {
 	assert (other->type.type == TypeMotion); //wg14 y u no HKT
 	Loc *nloc = new(Loc, 1);
 	*nloc = other->motion.perform(v, other->motion.state);
-	return new_transformation(nloc, perform_delete, undo_delete);
+	return new_transformation(nloc, NULL, perform_delete, undo_delete);
+	//todo pass other into prep
 }
-Function hof_delete(const V *v) {
-	return new_function(NULL, ModeDefault, TypeTransform, TypeMotion, deleter);
+
+static Loc move_until(const V *v, const void *s) {
+	Loc r = v->b.loc;
+	glyph g = (glyph)(usz)s;
+	usz x = r.x;
+	while (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] != g) {
+		x++;
+	}
+
+	if (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] == g) r.x = x;
+	return r;
 }
+static Function mover_until(const V *v, void *state, const Function *other) {
+	assert (other->type.type == TypeChar);
+	return new_motion((void*)(usz)other->character, move_until);
+}
+
+#define HOF(n, nmode, ret, parm, fun) static Type cv__ ## n ## __type[2] = {{.type=parm}, {.type=ret}}; Function hof_ ## n = {.type={.type=TypeFunction, .fn=cv__ ## n ## __type}, .function={.mode=nmode, .transform=fun}}
+HOF(move_until, ModeInsert, TypeMotion, TypeChar, mover_until);
+HOF(delete, ModeDefault, TypeTransform, TypeMotion, deleter);
+#undef HOF
+
+
+#define ETRANS(name, fprepare, fperform, fundo) Function transform_ ## name = {.type={TypeTransform}, .action={.prepare=fprepare, .perform=fperform, .undo=fundo}}
+#define TRANS(name) ETRANS(name, prepare_ ## name, perform_ ## name, undo_ ## name)
+
+static void prepare_stash_x(const V *v, void **state) {
+	*state = (void*)v->b.loc.x;
+}
+static void perform_ins_nl(V *v, const void *state) {
+        tb_insert_line(&v->b.tb, ++v->b.loc.y);
+        usz l = v->b.tb.lines[v->b.loc.y - 1].l - v->b.loc.x;
+        tb_insert(&v->b.tb, v->b.loc.y, 0, v->b.tb.lines[v->b.loc.y - 1].glyphs + v->b.loc.x, l);
+        tb_remove(&v->b.tb, v->b.loc.y - 1, v->b.loc.x, l);
+        v->b.loc.x = 0;
+}
+static void undo_ins_nl(V *v, const void *state) {
+	v->b.loc.y--;
+	v->b.loc.x = v->b.tb.lines[v->b.loc.y].l;
+	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, v->b.tb.lines[v->b.loc.y + 1].glyphs, v->b.tb.lines[v->b.loc.y + 1].l);
+	tb_remove_line(&v->b.tb, v->b.loc.y + 1);
+}
+ETRANS(ins_nl, prepare_stash_x, perform_ins_nl, undo_ins_nl);
+
+static void perform_add_nl(V *v, const void *state) {
+        tb_insert_line(&v->b.tb, ++v->b.loc.y);
+        v->b.loc.x = 0;
+}
+static void undo_add_nl(V *v, const void *state) {
+	tb_remove_line(&v->b.tb, v->b.loc.y--);
+	v->b.loc.x = (usz)state;
+}
+ETRANS(add_nl, prepare_stash_x, perform_add_nl, undo_add_nl);
+
+
+static void perform_prep_nl(V *v, const void *state) {
+	tb_insert_line(&v->b.tb, v->b.loc.y);
+	v->b.loc.x = 0;
+	v->mode = ModeInsert;
+}
+static void undo_prep_nl(V *v, const void *state) {
+	undo_add_nl(v, state);
+	v->mode = ModeNormal; //todo wrong
+}
+ETRANS(prep_nl, prepare_stash_x, perform_prep_nl, undo_prep_nl);
+
+static void prepare_delback(const V *v, void **state) {
+	if (v->b.loc.x) *state = (void*)(usz)v->b.tb.lines[v->b.loc.y].glyphs[v->b.loc.x-1];
+}
+static void perform_delback(V *v, const void *state) {
+        if (v->b.loc.x) tb_remove(&v->b.tb, v->b.loc.y, --v->b.loc.x, 1);
+}
+static void undo_delback(V *v, const void *state) {
+	if (v->b.loc.x) tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x++, &(glyph){(glyph)(usz)state}, 1);
+}
+TRANS(delback);
+
+static void prepare_delforward(const V *v, void **state) {
+	if (v->b.loc.x < v->b.tb.lines[v->b.loc.y].l) *state = (void*)(usz)v->b.tb.lines[v->b.loc.y].glyphs[v->b.loc.x];
+}
+static void perform_delforward(V *v, const void *state) {
+	if (v->b.loc.x < v->b.tb.lines[v->b.loc.y].l) tb_remove(&v->b.tb, v->b.loc.y, v->b.loc.x, 1);
+}
+static void undo_delforward(V *v, const void *state) {
+	if (v->b.loc.x < v->b.tb.lines[v->b.loc.y].l) tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, &(glyph){(glyph)(usz)state}, 1);
+}
+TRANS(delforward);
+
+static void prepare_modeswitch(const V *v, void **state) {
+	*state = (void*)(usz)v->mode;
+}
+static void undo_modeswitch(V *v, const void *state) {
+	v->mode = (Mode)(usz)state;
+}
+static void perform_insert(V *v, const void *state) { v->mode = ModeInsert; }
+ETRANS(insert, prepare_modeswitch, perform_insert, undo_modeswitch);
+static void perform_normal(V *v, const void *state) { v->mode = ModeNormal; }
+ETRANS(normal, prepare_modeswitch, perform_normal, undo_modeswitch);
+
+struct if_state { Mode old_mode; usz old_x; };
+static void prepare_if_state(const V *v, void **state) {
+	*state = onew(struct if_state, .old_mode=v->mode, .old_x=v->b.loc.x);
+}
+static void undo_if(V *v, const void *state) { const struct if_state *s = state; v->b.loc.x = s->old_x; v->mode = s->old_mode; }
+static void perform_insert_front(V *v, const void *state) { v->b.loc.x = 0; v->mode = ModeInsert; }
+static void perform_insert_back(V *v, const void *state) { v->b.loc.x = v->b.tb.lines[v->b.loc.y].l; v->mode = ModeInsert; }
+ETRANS(insert_front, prepare_if_state, perform_insert_front, undo_if);
+ETRANS(insert_back, prepare_if_state, perform_insert_back, undo_if);
+#undef TRANS
+#undef ETRANS

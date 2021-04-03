@@ -115,14 +115,14 @@ void msg(V *v, const char *fmt, ...) {
 	tickit_window_expose(v->message_window, NULL);
 }
 
-Actor *lookupg(V *v, glyph g) {
+Function *lookupg(V *v, glyph g) {
 	if (g >= 128) return NULL;
 	if ((v->mode & ModeMotion) && v->km_motion.ascii[g]) return v->km_motion.ascii[g];
 	if ((v->mode & ModeTransform) && v->km_transform.ascii[g]) return v->km_transform.ascii[g];
 	if ((v->mode & ModeFunction) && v->km_function.ascii[g]) return v->km_function.ascii[g];
 	return NULL;
 }
-Actor *lookup_special(V *v, SpecialKey k) {
+Function *lookup_special(V *v, SpecialKey k) {
 	if ((v->mode & ModeMotion) && v->km_motion.special[k]) return v->km_motion.special[k];
 	if ((v->mode & ModeTransform) && v->km_transform.special[k]) return v->km_transform.special[k];
 	if ((v->mode & ModeFunction) && v->km_function.special[k]) return v->km_function.special[k];
@@ -146,23 +146,16 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			}
 		} else {
 			for (usz i = 0; i < l; i++) {
-				Actor *a = lookupg(v, new[i]);
-				if (a) {
-					Function f = a(v);
-					v_push(v, &f);
-				} else {
-					msg(v, "No such command '%c'", new[i]);
-				}
+				Function *f = lookupg(v, new[i]);
+				if (f) v_push(v, f);
+				else msg(v, "No such command '%c'", new[i]);
 			}
 		}
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
-		Actor *a = lookup_special(v, k);
-		if (a) {
-			Function f = a(v);
-			v_push(v, &f);
-		}
+		Function *f = lookup_special(v, k);
+		if (f) v_push(v, f);
 	}
 
 	v_reduce(v);
@@ -207,33 +200,33 @@ void init_v(V *v) {
 
 	v->mode = ModeNormal;
 
-	v->km_insert.special[SpecialKeyLeft] = motion_cleft;
-	v->km_insert.special[SpecialKeyRight] = motion_cright;
-	v->km_insert.special[SpecialKeyUp] = motion_cup;
-	v->km_insert.special[SpecialKeyDown] = motion_cdown;
-	v->km_insert.special[SpecialKeyEnter] = transform_ins_nl;
-	v->km_insert.special[SpecialKeyBackspace] = transform_delback;
-	v->km_insert.special[SpecialKeyDelete] = transform_delforward;
-	v->km_insert.special[SpecialKeyEscape] = transform_normal;
+	v->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
+	v->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
+	v->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
+	v->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
+	v->km_insert.special[SpecialKeyEnter] = cnew(transform_ins_nl);
+	v->km_insert.special[SpecialKeyBackspace] = cnew(transform_delback);
+	v->km_insert.special[SpecialKeyDelete] = cnew(transform_delforward);
+	v->km_insert.special[SpecialKeyEscape] = cnew(transform_normal);
 
-	v->km_motion.ascii['h'] = motion_cleft;
-	v->km_motion.ascii['j'] = motion_cdown;
-	v->km_motion.ascii['k'] = motion_cup;
-	v->km_motion.ascii['l'] = motion_cright;
-	v->km_motion.ascii['0'] = motion_bol;
-	v->km_motion.ascii['$'] = motion_eol;
-	v->km_motion.ascii['w'] = motion_wordforward;
-	v->km_motion.ascii['b'] = motion_wordback;
-	v->km_transform.ascii['x'] = transform_delforward;
-	v->km_transform.ascii['i'] = transform_insert;
-	v->km_transform.ascii['o'] = transform_add_nl;
-	v->km_transform.ascii['O'] = transform_prep_nl;
-	v->km_transform.ascii['I'] = transform_insert_front;
-	v->km_transform.ascii['A'] = transform_insert_back;
+	v->km_motion.ascii['h'] = cnew(motion_cleft);
+	v->km_motion.ascii['j'] = cnew(motion_cdown);
+	v->km_motion.ascii['k'] = cnew(motion_cup);
+	v->km_motion.ascii['l'] = cnew(motion_cright);
+	v->km_motion.ascii['0'] = cnew(motion_bol);
+	v->km_motion.ascii['$'] = cnew(motion_eol);
+	v->km_motion.ascii['w'] = cnew(motion_wordforward);
+	v->km_motion.ascii['b'] = cnew(motion_wordback);
+	v->km_transform.ascii['x'] = cnew(transform_delforward);
+	v->km_transform.ascii['i'] = cnew(transform_insert);
+	v->km_transform.ascii['o'] = cnew(transform_add_nl);
+	v->km_transform.ascii['O'] = cnew(transform_prep_nl);
+	v->km_transform.ascii['I'] = cnew(transform_insert_front);
+	v->km_transform.ascii['A'] = cnew(transform_insert_back);
 
-	v->km_motion.ascii['t'] = hof_move_until;
+	v->km_motion.ascii['t'] = cnew(hof_move_until);
 
-	v->km_transform.ascii['d'] = hof_delete;
+	v->km_transform.ascii['d'] = cnew(hof_delete);
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 }
 
