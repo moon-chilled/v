@@ -4,3 +4,7 @@ It is for this reason that its primary implementation is written in c (an
 incredibly un-hip, un-sexy language), it is extremely slow (despite the
 implementation language), is not permissively licensed, is not documented, and
 has an ungooglable name.
+
+v's core editing model is sound, however, which will hopefully result in its
+adoption only by academics; having spurned ml, apl, _and_ lisp, industry
+deserves no better than it's gotten.
