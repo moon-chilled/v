@@ -1,0 +1,6 @@
+v is designed to fail at all costs
+
+It is for this reason that the primary implementation is written in c (an
+incredibly un-hip, un-sexy language), is extremely slow (despite the
+implementation language), is not permissively licensed, is not documented, and
+has an ungooglable name.
