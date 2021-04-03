@@ -43,7 +43,7 @@ struct Function {
 		struct {
 			void *state;
 			Mode mode;
-			Function (*transform)(const V *v, void *state, const Function *other); //todo self to refine bot/top type
+			Function (*transform)(const V *v, void *state, const Function *other);
 		} function;
 	};
 };
