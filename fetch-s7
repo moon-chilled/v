@@ -1,0 +1,4 @@
+#!/bin/sh
+wget https://ccrma.stanford.edu/software/s7/s7.tar.gz
+tar xf s7.tar.gz s7/s7.c s7/s7.h
+rm -f s7.tar.gz
