@@ -14,6 +14,7 @@ typedef enum {
 } Mode;
 
 #include <tickit.h>
+#include "s7.h"
 #include "prelude.h"
 #include "text-buffer.h"
 #include "functions.h"
@@ -35,14 +36,14 @@ typedef struct {
 	Function *special[SpecialKeyMax];
 } Keymap;
 
+typedef struct VV VV;
 struct V {
+	VV *vv;
+	s7_pointer env;
 	char newest_message[4096];
 	TickitWindow *message_window, *mode_window, *text_window;
 	Buffer b;
 	Mode mode;
-
-	Keymap km_motion, km_transform, km_function;
-	Keymap km_insert; //only for specials
 
 	struct {
 		Function f;
@@ -50,7 +51,16 @@ struct V {
 	} *stack;
 	usz sp;
 };
+struct VV {
+	V *v; //todo multiple
+	s7_scheme *s;
+	s7_pointer sym_v, sym_function_function, sym_function_transformation, sym_function_motion;
 
+	Keymap km_motion, km_transform, km_function;
+	Keymap km_insert; //only for specials
+};
+
+void vs7_init(VV *vv);
 void msg(V *v, const char *fmt, ...);
 
 void v_push(V *v, Function *f);

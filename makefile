@@ -4,7 +4,7 @@ CFLAGS += -MMD
 endif
 LFLAGS := -ltickit -lgc -lm
 CCLD ?= $(CC)
-C := c/cv.c c/tb.c c/functions.c c/function.c c/v.c s7/s7.c
+C := c/cv.c c/tb.c c/functions.c c/function.c c/v.c c/v7.c s7/s7.c
 O := $(patsubst %.c,o/%.o,$(C))
 
 v: $(O)

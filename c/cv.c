@@ -115,19 +115,19 @@ void msg(V *v, const char *fmt, ...) {
 	tickit_window_expose(v->message_window, NULL);
 }
 
-Function *lookupg(V *v, glyph g) {
+Function *lookupg(VV *vv, Mode mode, glyph g) {
 	if (g >= 128) return NULL;
-	if ((v->mode & ModeMotion) && v->km_motion.ascii[g]) return v->km_motion.ascii[g];
-	if ((v->mode & ModeTransform) && v->km_transform.ascii[g]) return v->km_transform.ascii[g];
-	if ((v->mode & ModeFunction) && v->km_function.ascii[g]) return v->km_function.ascii[g];
+	if ((mode & ModeMotion) && vv->km_motion.ascii[g]) return vv->km_motion.ascii[g];
+	if ((mode & ModeTransform) && vv->km_transform.ascii[g]) return vv->km_transform.ascii[g];
+	if ((mode & ModeFunction) && vv->km_function.ascii[g]) return vv->km_function.ascii[g];
 	return NULL;
 }
-Function *lookup_special(V *v, SpecialKey k) {
-	if ((v->mode & ModeMotion) && v->km_motion.special[k]) return v->km_motion.special[k];
-	if ((v->mode & ModeTransform) && v->km_transform.special[k]) return v->km_transform.special[k];
-	if ((v->mode & ModeFunction) && v->km_function.special[k]) return v->km_function.special[k];
+Function *lookup_special(VV *vv, Mode mode, SpecialKey k) {
+	if ((mode & ModeMotion) && vv->km_motion.special[k]) return vv->km_motion.special[k];
+	if ((mode & ModeTransform) && vv->km_transform.special[k]) return vv->km_transform.special[k];
+	if ((mode & ModeFunction) && vv->km_function.special[k]) return vv->km_function.special[k];
 
-	if (v->mode == ModeInsert) return v->km_insert.special[k];
+	if (mode == ModeInsert) return vv->km_insert.special[k];
 	return NULL;
 }
 
@@ -146,7 +146,7 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			}
 		} else {
 			for (usz i = 0; i < l; i++) {
-				Function *f = lookupg(v, new[i]);
+				Function *f = lookupg(v->vv, v->mode, new[i]);
 				if (f) v_push(v, f);
 				else msg(v, "No such command '%c'", new[i]);
 			}
@@ -154,7 +154,7 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	} else if (info->type == TICKIT_KEYEV_KEY) {
 		SpecialKey k;
 		if (!tickit_to_key(info->str, &k)) { msg(v, "Unknown key '%s'", info->str); return 1; }
-		Function *f = lookup_special(v, k);
+		Function *f = lookup_special(v->vv, v->mode, k);
 		if (f) v_push(v, f);
 	}
 
@@ -191,48 +191,70 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	return 1;
 }
 
-void init_v(V *v) {
+void init_v(VV *vv, V *v) {
 	memset(v, 0, sizeof(*v));
+
+	v->vv = vv;
+
+	v->env = s7_inlet(vv->s, s7_nil(vv->s));
 
 	strcpy(v->newest_message, "Welcome to v!");
 
 	tb_insert_line(&v->b.tb, 0);
 
 	v->mode = ModeNormal;
+}
 
-	v->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
-	v->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
-	v->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
-	v->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
-	v->km_insert.special[SpecialKeyEnter] = cnew(transform_ins_nl);
-	v->km_insert.special[SpecialKeyBackspace] = cnew(transform_delback);
-	v->km_insert.special[SpecialKeyDelete] = cnew(transform_delforward);
-	v->km_insert.special[SpecialKeyEscape] = cnew(transform_normal);
+void init_vv(VV *vv) {
+	memset(vv, 0, sizeof(*vv));
+	vv->s = s7_init();
+	s7_gc_on(vv->s, false); //bdw ftw!  (Todo obviate, maybe.)
+	vv->sym_v = s7_make_symbol(vv->s, "v");
+	vv->sym_function_function = s7_make_symbol(vv->s, "function-function");
+	vv->sym_function_transformation = s7_make_symbol(vv->s, "function-transformation");
+	vv->sym_function_motion = s7_make_symbol(vv->s, "function-motion");
 
-	v->km_motion.ascii['h'] = cnew(motion_cleft);
-	v->km_motion.ascii['j'] = cnew(motion_cdown);
-	v->km_motion.ascii['k'] = cnew(motion_cup);
-	v->km_motion.ascii['l'] = cnew(motion_cright);
-	v->km_motion.ascii['0'] = cnew(motion_bol);
-	v->km_motion.ascii['$'] = cnew(motion_eol);
-	v->km_motion.ascii['w'] = cnew(motion_wordforward);
-	v->km_motion.ascii['b'] = cnew(motion_wordback);
-	v->km_transform.ascii['x'] = cnew(transform_delforward);
-	v->km_transform.ascii['i'] = cnew(transform_insert);
-	v->km_transform.ascii['o'] = cnew(transform_add_nl);
-	v->km_transform.ascii['O'] = cnew(transform_prep_nl);
-	v->km_transform.ascii['I'] = cnew(transform_insert_front);
-	v->km_transform.ascii['A'] = cnew(transform_insert_back);
+	vv->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
+	vv->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
+	vv->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
+	vv->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
+	vv->km_insert.special[SpecialKeyEnter] = cnew(transform_ins_nl);
+	vv->km_insert.special[SpecialKeyBackspace] = cnew(transform_delback);
+	vv->km_insert.special[SpecialKeyDelete] = cnew(transform_delforward);
+	vv->km_insert.special[SpecialKeyEscape] = cnew(transform_normal);
 
-	v->km_motion.ascii['t'] = cnew(hof_move_until);
+	vv->km_motion.ascii['h'] = cnew(motion_cleft);
+	vv->km_motion.ascii['j'] = cnew(motion_cdown);
+	vv->km_motion.ascii['k'] = cnew(motion_cup);
+	vv->km_motion.ascii['l'] = cnew(motion_cright);
+	vv->km_motion.ascii['0'] = cnew(motion_bol);
+	vv->km_motion.ascii['$'] = cnew(motion_eol);
+	vv->km_motion.ascii['w'] = cnew(motion_wordforward);
+	vv->km_motion.ascii['b'] = cnew(motion_wordback);
+	vv->km_transform.ascii['x'] = cnew(transform_delforward);
+	vv->km_transform.ascii['i'] = cnew(transform_insert);
+	vv->km_transform.ascii['o'] = cnew(transform_add_nl);
+	vv->km_transform.ascii['O'] = cnew(transform_prep_nl);
+	vv->km_transform.ascii['I'] = cnew(transform_insert_front);
+	vv->km_transform.ascii['A'] = cnew(transform_insert_back);
 
-	v->km_transform.ascii['d'] = cnew(hof_delete);
+	vv->km_motion.ascii['t'] = cnew(hof_move_until);
+
+	vv->km_transform.ascii['d'] = cnew(hof_delete);
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
+
+	vs7_init(vv);
+	s7_load(vv->s, "s/boot.scm");
 }
 
 int main(void) {
-	V *v = new(V, 1); //big
-	init_v(v);
+	VV vv;
+	init_vv(&vv);
+
+	vv.v = new(V, 1); //big;
+	init_v(&vv, vv.v);
+
+	V *v = vv.v;
 
 	Tickit *t = tickit_new_stdio();
 	TickitWindow *rt = tickit_get_rootwin(t);

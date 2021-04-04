@@ -1,0 +1,58 @@
+diff --git a/s7/s7.c b/s7/s7.c
+index a359ec1..aaa216b 100644
+--- a/s7/s7.c
++++ b/s7/s7.c
+@@ -440,6 +440,16 @@ typedef long double long_double;
+ 
+ #define MAX_FLOAT_FORMAT_PRECISION 128
+ 
++#include <gc.h>
++static void *Malloc(size_t bytes) { return GC_malloc(bytes); }
++static void *Calloc(size_t nmemb, size_t size) { return GC_malloc(nmemb*size); }
++static void *Realloc(void *ptr, size_t size) { return GC_realloc(ptr, size); }
++static void Free(void *ptr) {}
++#define malloc Malloc
++#define calloc Calloc
++#define realloc Realloc
++#define free Free
++
+ /* types */
+ enum {T_FREE = 0,
+       T_PAIR, T_NIL, T_UNUSED, T_UNDEFINED, T_UNSPECIFIED, T_EOF, T_BOOLEAN, T_CHARACTER, T_SYNTAX, T_SYMBOL,
+@@ -1444,36 +1454,6 @@ static void add_saved_pointer(s7_scheme *sc, void *p)
+   sc->saved_pointers[sc->saved_pointers_loc++] = p;
+ }
+ 
+-#if POINTER_32
+-static void *Malloc(size_t bytes)
+-{
+-  void *p;
+-  p = malloc(bytes);
+-  if (!p) s7_error(cur_sc, cur_sc->out_of_memory_symbol, cur_sc->nil);
+-  return(p);
+-}
+-
+-static void *Calloc(size_t nmemb, size_t size)
+-{
+-  void *p;
+-  p = calloc(nmemb, size);
+-  if (!p) s7_error(cur_sc, cur_sc->out_of_memory_symbol, cur_sc->nil);
+-  return(p);
+-}
+-
+-static void *Realloc(void *ptr, size_t size)
+-{
+-  void *p;
+-  p = realloc(ptr, size);
+-  if (!p) s7_error(cur_sc, cur_sc->out_of_memory_symbol, cur_sc->nil);
+-  return(p);
+-}
+-#else
+-#define Malloc malloc
+-#define Calloc calloc
+-#define Realloc realloc
+-#endif
+-
+ static const int32_t intlen_bits[256] =
+   {0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
