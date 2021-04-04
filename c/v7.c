@@ -23,7 +23,7 @@ static s7_pointer make_motion(s7_scheme *s, s7_pointer args) {
 
 // character -> cpointer -> nil
 static s7_pointer create_binding(s7_scheme *s, s7_pointer args) {
-	VV *vv = s7_c_pointer(s7_name_to_value(s, "__vv"));
+	VV *vv = s7_c_pointer(s7_name_to_value(s, "___vv"));
 	assert (s7_is_list(s, args) && s7_is_character(s7_car(args)) && s7_is_list(s, s7_cdr(args)) && s7_is_null(s, s7_cddr(args)));
 	u1 ch = s7_character(s7_car(args));
 	s7_pointer bj = s7_cadr(args);
@@ -34,7 +34,7 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args) {
 }
 
 void vs7_init(VV *vv) {
-	s7_define_safe_function(vv->s, "make-motion", make_motion, 1, 1, false, "TODO");
-	s7_define_safe_function(vv->s, "create-binding", create_binding, 2, 2, false, "TODO");
-	s7_define_variable(vv->s, "__vv", s7_make_c_pointer(vv->s, vv)); //todo can we establish a side channel for this?
+	s7_define_safe_function(vv->s, "LOW-make-motion", make_motion, 1, 1, false, "TODO");
+	s7_define_safe_function(vv->s, "LOW-create-binding", create_binding, 2, 2, false, "TODO");
+	s7_define_variable(vv->s, "___vv", s7_make_c_pointer(vv->s, vv)); //todo can we establish a side channel for this?
 }
