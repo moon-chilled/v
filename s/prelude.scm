@@ -3,16 +3,24 @@
 ; cl, my maven!
 ; perhaps I'll ?-p and !f too, but later
 (define-expansion (defexpansion name pspec . body) `(define-expansion* (,name ,@pspec) ,@body))
-(defexpansion defun (name pspec :rest body) `(define* (,name ,@pspec) ,@body))
-(defexpansion defmacro (name pspec :rest body) `(define-macro* (,name ,@pspec) ,@body))
-(define lambda lambda*)
-
+(defexpansion lambda (pspec :rest body) (if (string? (car body))
+                                          `(let ((+documentation+ ,(car body))) (lambda* ,pspec ,@(cdr body)))
+                                          `(lambda* ,pspec ,@body)))
+(defexpansion macro (pspec :rest body) (if (string? (car body))
+                                          `(let ((+documentation+ ,(car body))) (macro* ,pspec ,@(cdr body)))
+                                          `(macro* ,pspec ,@body)))
+(defexpansion defun (name pspec :rest body) (if (string? (car body))
+                                              `(define ,name (let ((+documentation+ ,(car body))) (lambda (,@pspec) ,@(cdr body))))
+                                              `(define* (,name ,@pspec) ,@body)))
+(defexpansion defmacro (name pspec :rest body) (if (string? (car body))
+                                                 `(define ,name (let ((+documentation+ ,(car body))) (macro (,@pspec) ,@(cdr body))))
+                                                 `(define-macro* (,name ,@pspec) ,@body)))
 (defun 1+ (x) (+ x 1))
 (defun 1- (x) (- x 1))
-(defexpansion inc! (x)
-              `(set! ,x (1+ ,x)))
-(defexpansion dec! (x)
-              `(set! ,x (1- ,x)))
+(defexpansion incf (x (inc 1))
+              `(set! ,x (+ ,x ,inc)))
+(defexpansion decf (x (dec 1))
+              `(set! ,x (- ,x ,dec)))
 
 (defexpansion block (:rest body)
               `(call-with-exit (lambda (return) ,@body)))
@@ -45,8 +53,8 @@
               (block
                 (let ((f (lambda (c)
                            (cond
-                             ((char=? c close-delimiter) (dec! depth))
-                             ((char=? c open-delimiter) (inc! depth)))
+                             ((char=? c close-delimiter) (decf depth))
+                             ((char=? c open-delimiter) (incf depth)))
                            (if (> depth 0)
                              (set! r (string-append r (string c)))
                              (return r)))))
@@ -58,4 +66,4 @@
 
 (format #t "This still works: '~a'~%" #q|foo bar {baz } biz|)
 (format #t "This still works: '~a'~%" #q{foo bar {baz } biz})
-;(format #t "This doesn't work: '~a' '~a'~%" #q/foo/#q/bar/)
+;(format #t "This doesn't work yet: '~a' '~a'~%" #q/foo/#q/bar/)
