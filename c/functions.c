@@ -31,16 +31,6 @@ static Loc move_cup(const V *v, const void *s) {
         }
         return r;
 }
-static Loc move_eol(const V *v, const void *s) {
-	Loc r = v->b.loc;
-	r.x = v->b.tb.lines[r.y].l;
-	return r;
-}
-static Loc move_bol(const V *v, const void *s) {
-	Loc r = v->b.loc;
-	r.x = 0;
-	return r;
-}
 static Loc move_wordforward(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	TextBuffer tb = v->b.tb;

@@ -209,10 +209,29 @@ void init_vv(VV *vv) {
 	memset(vv, 0, sizeof(*vv));
 	vv->s = s7_init();
 	s7_gc_on(vv->s, false); //bdw ftw!  (Todo obviate, maybe.)
-	vv->sym_v = s7_make_symbol(vv->s, "v");
-	vv->sym_function_function = s7_make_symbol(vv->s, "function-function");
-	vv->sym_function_transformation = s7_make_symbol(vv->s, "function-transformation");
-	vv->sym_function_motion = s7_make_symbol(vv->s, "function-motion");
+#define SYM(x,y) vv->sym_##x = s7_make_symbol(vv->s, y)
+#define SSYM(x) vv->sym_ ##x = s7_make_symbol(vv->s, #x)
+#define PSYM(x) vv->sym_ ##x##_p = s7_make_symbol(vv->s, #x "?")
+	SSYM(v);
+	SYM(function_function, "function-function");
+	SYM(function_transformation, "function-transformation");
+	SYM(function_motion, "function-motion");
+	SSYM(default);
+	SSYM(insert);
+	SSYM(motion);
+	SSYM(transform);
+	SSYM(function);
+	PSYM(procedure);
+	PSYM(character);
+	SYM(c_pointer_p, "c-pointer?");
+	PSYM(symbol);
+	SSYM(not);
+	PSYM(pair);
+	PSYM(integer);
+#undef PSYM
+#undef SSYM
+#undef SYM
+
 
 	vv->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
 	vv->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
@@ -227,8 +246,8 @@ void init_vv(VV *vv) {
 	vv->km_motion.ascii['j'] = cnew(motion_cdown);
 	vv->km_motion.ascii['k'] = cnew(motion_cup);
 	vv->km_motion.ascii['l'] = cnew(motion_cright);
-	vv->km_motion.ascii['0'] = cnew(motion_bol);
-	vv->km_motion.ascii['$'] = cnew(motion_eol);
+	//vv->km_motion.ascii['0'] = cnew(motion_bol);
+	//vv->km_motion.ascii['$'] = cnew(motion_eol);
 	vv->km_motion.ascii['w'] = cnew(motion_wordforward);
 	vv->km_motion.ascii['b'] = cnew(motion_wordback);
 	vv->km_transform.ascii['x'] = cnew(transform_delforward);
