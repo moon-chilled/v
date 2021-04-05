@@ -1,4 +1,7 @@
 #!/bin/sh
 wget https://ccrma.stanford.edu/software/s7/s7.tar.gz
-tar xf s7.tar.gz s7/s7.c s7/s7.h
+tar xf s7.tar.gz s7/s7.c s7/s7.h s7/loop.scm
 rm -f s7.tar.gz
+mv s7/loop.scm s/
+cd s7
+patch -p2 < s7.patch

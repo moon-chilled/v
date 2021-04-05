@@ -1,38 +1,5 @@
 #include "v.h"
 
-// ctype isspace is bad
-static bool is_space(glyph g) {
-	return g == ' ' || g == '\t' || g == '\n' || g == '\r' || g == '\f';
-}
-
-static Loc move_wordforward(const V *v, const void *s) {
-	Loc r = v->b.loc;
-	TextBuffer tb = v->b.tb;
-	while (r.x < tb.lines[r.y].l && !is_space(tb.lines[r.y].glyphs[r.x])) {
-		r.x++;
-	}
-	while (r.x < tb.lines[r.y].l && is_space(tb.lines[r.y].glyphs[r.x])) {
-		r.x++;
-	}
-	return r;
-}
-static Loc move_wordback(const V *v, const void *s) {
-	Loc r = v->b.loc;
-	TextBuffer tb = v->b.tb;
-	while (r.x && is_space(tb.lines[r.y].glyphs[r.x-1])) {
-		r.x--;
-	}
-	while (r.x && !is_space(tb.lines[r.y].glyphs[r.x-1])) {
-		r.x--;
-	}
-	return r;
-}
-#define MOTION(n) Function motion_ ##n = {.type={TypeMotion}, .motion={.perform=move_ ## n}}
-MOTION(wordforward);
-MOTION(wordback);
-#undef MOTION
-
-
 static void perform_delete(V *v, const void *state) {
 	const Loc *dst = state;
 	if (dst->y < v->b.loc.y) {

@@ -242,8 +242,6 @@ void init_vv(VV *vv) {
 	vv->km_insert.special[SpecialKeyDelete] = cnew(transform_delforward);
 	vv->km_insert.special[SpecialKeyEscape] = cnew(transform_normal);
 
-	vv->km_motion.ascii['w'] = cnew(motion_wordforward);
-	vv->km_motion.ascii['b'] = cnew(motion_wordback);
 	vv->km_transform.ascii['x'] = cnew(transform_delforward);
 	vv->km_transform.ascii['i'] = cnew(transform_insert);
 	vv->km_transform.ascii['o'] = cnew(transform_add_nl);

@@ -67,9 +67,6 @@ static inline Function new_function(void *state, Mode mode, TypeType ret, TypeTy
 	return f;
 }
 
-extern Function motion_cleft, motion_cright, motion_cup, motion_cdown;
-extern Function motion_bol, motion_eol;
-extern Function motion_wordforward, motion_wordback;
 extern Function transform_ins_nl, transform_prep_nl, transform_add_nl, transform_delback, transform_delforward;
 extern Function transform_insert, transform_normal;
 extern Function transform_insert_front, transform_insert_back;
