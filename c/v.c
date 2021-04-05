@@ -54,7 +54,7 @@ bool v_reduce(V *v) {
 		break;
 	}
 
-	if (ret) msg(v, "");
+	//if (ret) msg(v, "");
 
 	return ret;
 }

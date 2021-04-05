@@ -5,32 +5,6 @@ static bool is_space(glyph g) {
 	return g == ' ' || g == '\t' || g == '\n' || g == '\r' || g == '\f';
 }
 
-static Loc move_cleft(const V *v, const void *s) {
-        Loc r = v->b.loc;
-        if (r.x) r.x--;
-        return r;
-}
-static Loc move_cright(const V *v, const void *s) {
-        Loc r = v->b.loc;
-        if (r.x < v->b.tb.lines[r.y].l) r.x++;
-        return r;
-}
-static Loc move_cdown(const V *v, const void *s) {
-        Loc r = v->b.loc;
-        if (r.y+1 < v->b.tb.l) {
-                r.y++;
-                r.x = min(r.x, v->b.tb.lines[/*++*/r.y].l); //wg14 y u no ({})
-        }
-        return r;
-}
-static Loc move_cup(const V *v, const void *s) {
-        Loc r = v->b.loc;
-        if (r.y) {
-                r.y--;
-                r.x = min(r.x, v->b.tb.lines[r.y].l);
-        }
-        return r;
-}
 static Loc move_wordforward(const V *v, const void *s) {
 	Loc r = v->b.loc;
 	TextBuffer tb = v->b.tb;
@@ -54,12 +28,6 @@ static Loc move_wordback(const V *v, const void *s) {
 	return r;
 }
 #define MOTION(n) Function motion_ ##n = {.type={TypeMotion}, .motion={.perform=move_ ## n}}
-MOTION(cleft);
-MOTION(cright);
-MOTION(cdown);
-MOTION(cup);
-MOTION(eol);
-MOTION(bol);
 MOTION(wordforward);
 MOTION(wordback);
 #undef MOTION

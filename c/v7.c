@@ -110,4 +110,7 @@ void vs7_init(VV *vv) {
 	FN("character-at", character_at, 2);
 	FN("codepoint-at", codepoint_at, 2);
 	s7_define_variable(vv->s, "___vv", s7_make_c_pointer(vv->s, vv)); //todo can we establish a side channel for this?
+
+	s7_add_to_load_path(vv->s, "s");
+	s7_load(vv->s, "boot.scm");
 }

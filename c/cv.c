@@ -233,21 +233,15 @@ void init_vv(VV *vv) {
 #undef SYM
 
 
-	vv->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
-	vv->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
-	vv->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
-	vv->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
+	//vv->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
+	//vv->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
+	//vv->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
+	//vv->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
 	vv->km_insert.special[SpecialKeyEnter] = cnew(transform_ins_nl);
 	vv->km_insert.special[SpecialKeyBackspace] = cnew(transform_delback);
 	vv->km_insert.special[SpecialKeyDelete] = cnew(transform_delforward);
 	vv->km_insert.special[SpecialKeyEscape] = cnew(transform_normal);
 
-	vv->km_motion.ascii['h'] = cnew(motion_cleft);
-	vv->km_motion.ascii['j'] = cnew(motion_cdown);
-	vv->km_motion.ascii['k'] = cnew(motion_cup);
-	vv->km_motion.ascii['l'] = cnew(motion_cright);
-	//vv->km_motion.ascii['0'] = cnew(motion_bol);
-	//vv->km_motion.ascii['$'] = cnew(motion_eol);
 	vv->km_motion.ascii['w'] = cnew(motion_wordforward);
 	vv->km_motion.ascii['b'] = cnew(motion_wordback);
 	vv->km_transform.ascii['x'] = cnew(transform_delforward);
@@ -263,7 +257,7 @@ void init_vv(VV *vv) {
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 
 	vs7_init(vv);
-	s7_load(vv->s, "s/boot.scm");
+	//s7_load(vv->s, "s/boot.scm");
 }
 
 int main(void) {
