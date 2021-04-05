@@ -532,7 +532,7 @@ typedef block_t vdims_t;
 #define vdims_original(p)                p->ex.ex_ptr
 
 
-typedef enum {TOKEN_EOF, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_DOT, TOKEN_ATOM, TOKEN_QUOTE, TOKEN_DOUBLE_QUOTE, TOKEN_BACK_QUOTE,
+typedef enum {TOKEN_EOF, TOKEN_LEFT_PAREN, TOKEN_RIGHT_PAREN, TOKEN_DOT, TOKEN_ATOM, TOKEN_QUOTE, TOKEN_DOUBLE_QUOTE, TOKEN_DELIMITED_QUOTE, TOKEN_BACK_QUOTE,
 	      TOKEN_COMMA, TOKEN_AT_MARK, TOKEN_SHARP_CONST, TOKEN_VECTOR, TOKEN_BYTE_VECTOR, TOKEN_INT_VECTOR, TOKEN_FLOAT_VECTOR} token_t;
 
 typedef enum {NO_ARTICLE, INDEFINITE_ARTICLE} article_t;
@@ -70475,6 +70475,10 @@ static token_t read_sharp(s7_scheme *sc, s7_pointer pt)
       backchar('u', pt);
       break;
 
+    case 'q':
+      return(TOKEN_DELIMITED_QUOTE);
+
+
     case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9':
       {
 	/* here we can get an overflow: #1231231231231232131D() */
@@ -70781,6 +70785,76 @@ static s7_pointer unknown_string_constant(s7_scheme *sc, int32_t c)
   return(sc->T);
 }
 
+static s7_pointer read_delimited_string_constant(s7_scheme *sc, s7_pointer pt)
+{
+  const char *openers = "([{<";
+  const char *closers = ")]}>";
+  s7_int depth = 1;
+  int32_t open_delimiter = port_read_character(pt)(sc, pt);
+  char close_delimiter;
+  
+  if (open_delimiter == EOF)
+    {
+      sc->strbuf[0] = '\0';
+      return(sc->F);
+    }
+    
+  {
+    char *opener_address = strchr(openers, open_delimiter);
+    if (opener_address) close_delimiter = closers[opener_address - openers];
+    else close_delimiter = open_delimiter;
+  }
+      
+  if (is_string_port(pt))
+    {
+      char *start = (char *)(port_data(pt) + port_position(pt));
+      char *end = (char*)(port_data(pt) + port_data_size(pt));
+      char needle[3] = {open_delimiter, close_delimiter, '\0'};
+      char *s = start;
+      
+      while (depth)
+        {
+          s = strpbrk(s, needle);
+          if (!s) return(sc->F);
+          if (*s == close_delimiter) depth--;
+          else if (*s == open_delimiter) depth++;
+          s++;
+        }
+            
+
+      port_position(pt) += s - start;
+      return(make_string_with_length(sc, start, s - start - 1));
+    }
+  
+  
+  while (true)
+    {
+      s7_int i = 0;
+      int32_t c = port_read_character(pt)(sc, pt);
+      
+      switch (c)
+        {
+          case EOF:
+            sc->strbuf[(i > 8) ? 8 : i] = '\0';
+            return(sc->F);
+          case '\n':
+            port_line_number(pt)++;
+            sc->strbuf[i++] = c;
+            break;
+          default:
+            if (c == close_delimiter) depth--;
+            else if (c == open_delimiter) depth++;
+            
+            if (!depth) return(make_string_with_length(sc, sc->strbuf, i));
+
+            sc->strbuf[i++] = (unsigned char)c;
+	}
+
+      if (i >= sc->strbuf_size)
+	resize_strbuf(sc, i);
+    }
+}
+
 static s7_pointer read_string_constant(s7_scheme *sc, s7_pointer pt)
 {
   /* sc->F => error
@@ -70929,6 +71003,14 @@ static void read_double_quote(s7_scheme *sc)
   if (sc->safety > IMMUTABLE_VECTOR_SAFETY) set_immutable(sc->value);
 }
 
+static void read_delimited_quote(s7_scheme *sc)
+{
+  sc->value = read_delimited_string_constant(sc, current_input_port(sc));
+  if (sc->value == sc->F)
+    string_read_error(sc, "end of input encountered while in a delimited string");
+  if (sc->safety > IMMUTABLE_VECTOR_SAFETY) set_immutable(sc->value);
+}
+
 static inline bool read_sharp_const(s7_scheme *sc)
 {
   sc->value = port_read_sharp(current_input_port(sc))(sc, current_input_port(sc));
@@ -71058,6 +71140,10 @@ static s7_pointer read_expression(s7_scheme *sc)
 	case TOKEN_DOUBLE_QUOTE:
 	  read_double_quote(sc);
 	  return(sc->value);
+          
+        case TOKEN_DELIMITED_QUOTE:
+          read_delimited_quote(sc);
+          return(sc->value);
 
 	case TOKEN_SHARP_CONST:
 	  return(port_read_sharp(current_input_port(sc))(sc, current_input_port(sc)));
@@ -94048,6 +94134,7 @@ static s7_pointer eval(s7_scheme *sc, opcode_t first_op)
 	    case TOKEN_ATOM:         sc->value = port_read_name(current_input_port(sc))(sc, current_input_port(sc)); goto READ_LIST;
 	    case TOKEN_SHARP_CONST:  if (read_sharp_const(sc)) goto READ_TOK; goto READ_LIST;
 	    case TOKEN_DOUBLE_QUOTE: read_double_quote(sc); goto READ_LIST;
+            case TOKEN_DELIMITED_QUOTE: read_delimited_quote(sc); goto READ_LIST;
 	    case TOKEN_DOT:          read_dot_and_expression(sc); break;
 	    default:                 read_tok_default(sc); break;
 	    }
