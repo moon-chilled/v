@@ -60,9 +60,9 @@
                              (return r)))))
                   (loop for i from 0 below (length s)
                         do (f (string-ref s i)))
-                  (do ((c (read-byte) (read-byte)))
-                    ((eq? c #<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
-                    (f (integer->char c)))))))
+                  (loop for c = (read-byte) then (read-byte)
+                        do (begin (when (eq? c #<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
+                                  (f (integer->char c))))))))
 
 (format #t "This still works: '~a'~%" #q|foo bar {baz } biz|)
 (format #t "This still works: '~a'~%" #q{foo bar {baz } biz})
