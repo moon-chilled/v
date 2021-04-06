@@ -30,6 +30,12 @@
               `(set! *#readers*
                 (cons (cons ,character (lambda (,str) ,@body)) *#readers*)))
 
+(defexpansion prog1 (form1 :rest forms)
+              (let ((sym (gensym)))
+                `(let ((,sym ,form1))
+                   ,@forms
+                   ,sym)))
+
 ; todo unicode character syntax (→ integer); maybe #_á?  Or overload #\á?  #'á
 ; looks like cl but is legitimately really cute
 
@@ -37,33 +43,21 @@
 ; #q/foo/
 ; #q|bar\|
 ; #q{these {do} nest}
-; note: at the moment this is wrong; something like #/foo/bar will be
-; truncated to "foo" when it should be (values "foo" bar).  The proper fix
-; involves creating a wrapper port, or (my preference) amending behaviour of
-; *#readers* to be sensible when presented with a niladic function
 (add-reader #\q str
+            (decf (port-position (current-input-port)) (1- (length str)))
             (let* ((openers "[{(<")
                    (closers "]})>")
-                   (open-delimiter (string-ref str 1))
+                   (open-delimiter (read-char))
                    (close-delimiter (let ((i (char-position open-delimiter openers)))
                                       (if i (string-ref closers i) open-delimiter)))
-                   (r "")
-                   (s (substring str 2))
                    (depth 1))
-              (block
-                (let ((f (lambda (c)
-                           (cond
-                             ((char=? c close-delimiter) (decf depth))
-                             ((char=? c open-delimiter) (incf depth)))
-                           (if (> depth 0)
-                             (set! r (string-append r (string c)))
-                             (return r)))))
-                  (loop for i from 0 below (length s)
-                        do (f (string-ref s i)))
-                  (loop for c = (read-byte) then (read-byte)
-                        do (begin (when (eq? c #<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
-                                  (f (integer->char c))))))))
-
-(format #t "This still works: '~a'~%" #q|foo bar {baz } biz|)
-(format #t "This still works: '~a'~%" #q{foo bar {baz } biz})
-;(format #t "This doesn't work yet: '~a' '~a'~%" #q/foo/#q/bar/)
+              (prog1
+                (apply string (loop for c = (peek-char) then (peek-char)
+                                    do (apply case c
+                                              `(((#<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
+                                                ((,close-delimiter) (decf depth))
+                                                ((,open-delimiter) (incf depth))))
+                                    while (> depth 0)
+                                    collect (read-char)))
+                ; read the close-delimiter
+                (read-char))))
