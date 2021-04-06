@@ -26,9 +26,12 @@
               `(call-with-exit (lambda (return) ,@body)))
 (defexpansion assert (c) `(unless ,c (error 'assertion-failure (format #f "unhandled assertion ~a" ',c))))
 
-(defexpansion add-reader (character str :rest body)
-              `(set! *#readers*
-                (cons (cons ,character (lambda (,str) ,@body)) *#readers*)))
+(defexpansion add-reader (character :rest body)
+              (let ((str (gensym)))
+                `(set! *#readers*
+                   (cons (cons ,character (lambda (,str)
+                                            (decf (port-position (current-input-port)) (1- (length ,str)))
+                                            ,@body)) *#readers*))))
 
 (defexpansion prog1 (form1 :rest forms)
               (let ((sym (gensym)))
@@ -43,8 +46,7 @@
 ; #q/foo/
 ; #q|bar\|
 ; #q{these {do} nest}
-(add-reader #\q str
-            (decf (port-position (current-input-port)) (1- (length str)))
+(add-reader #\q
             (let* ((openers "[{(<")
                    (closers "]})>")
                    (open-delimiter (read-char))
@@ -61,3 +63,6 @@
                                     collect (read-char)))
                 ; read the close-delimiter
                 (read-char))))
+(add-reader #\L `(lambda ($) ,(read)))
+
+(format #t "'~a' '~a' '~a' '~a'~%" #q/ab\c/#q/r/ #q{ab cd {de }f } #q//)

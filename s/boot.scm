@@ -6,6 +6,7 @@
 (load "prelude.scm")
 
 (define *motions* (inlet))
+(define *mutations* (inlet))
 
 (defmacro with-cursor-location (ps :rest body)
               (let ((yx (gensym)))
@@ -58,3 +59,35 @@
 (bind-motion eof #\G)
 (bind-motion word-forward #\w)
 (bind-motion word-back #\b)
+
+
+;(defmacro define-mutation (name bindings perform undo)
+;  `(let ,(map (lambda (x) (list (car x) #<undefined>)) bindings) #L`(,(car $) #<undefined>)
+;     (with-let *motions*
+;               (define ,name (list
+;                               ; prepare
+;                               (lambda () ,(map (lambda (x) `(set! ,@x)) bindings)) ; ,(map #L`(set! ,@$))
+;                               ,perform
+;                               ,undo)))))
+;(defmacro bind-mutation (mutation key)
+;              `(LOW-create-binding 'mutation ,key (apply LOW-make-mutation (*mutations* ',mutation))))
+;
+;
+;
+;(lambda ()
+;  (let ((x (cdr (cursor-location))))
+;    (values
+;      (lambda () (... x))
+;      (lambda () (... x)))))
+;
+;(define-mutation
+;  ((x (cdr cursor-location))
+;   (... ...))
+;  (lambda () (... x))
+;  (lambda () (... x)))
+;
+;(let ((x #<undefined>))
+;  (values
+;    (lambda () (set! x (cdr cursor-location)))
+;    (lambda () (... x))
+;    (lambda () (... x))))
