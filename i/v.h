@@ -7,10 +7,10 @@ typedef enum {
 	ModeDefault = -1,
 	ModeInsert = 0,
 	ModeMotion = 0x1,
-	ModeTransform = 0x2,
+	ModeMutate = 0x2,
 	ModeFunction = 0x4,
 
-	ModeNormal = ModeMotion | ModeTransform | ModeFunction, //todo this needs an ordering
+	ModeNormal = ModeMotion | ModeMutate | ModeFunction, //todo this needs an ordering
 } Mode;
 
 #include <tickit.h>
@@ -54,11 +54,11 @@ struct V {
 struct VV {
 	V *v; //todo multiple
 	s7_scheme *s;
-	s7_pointer sym_v, sym_function_function, sym_function_transformation, sym_function_motion;
-	s7_pointer sym_default, sym_insert, sym_motion, sym_transform, sym_function;
+	s7_pointer sym_v, sym_function_function, sym_function_mutation, sym_function_motion;
+	s7_pointer sym_default, sym_insert, sym_motion, sym_mutation, sym_function;
 	s7_pointer sym_procedure_p, sym_character_p, sym_c_pointer_p, sym_symbol_p, sym_not, sym_pair_p, sym_integer_p;
 
-	Keymap km_motion, km_transform, km_function;
+	Keymap km_motion, km_mutate, km_function;
 	Keymap km_insert; //only for specials
 };
 

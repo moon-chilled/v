@@ -1,7 +1,4 @@
 ;(set! (*s7* 'safety) 2)
-;(format #t "~a~%~a~%" (signature map) (signature LOW-create-binding))
-;(display (signature map))
-;(display (signature LOW-create-binding))
 
 (load "prelude.scm")
 
@@ -38,15 +35,15 @@
                          (cons l (character-count l))))
 (define-motion word-forward
                (loop while (and (< x (character-count y)) (not (isspace (character-at y x))))
-                     do (inc! x))
+                     do (incf x))
                (loop while (and (< x (character-count y) )(isspace (character-at y x)))
-                     do (inc! x))
+                     do (incf x))
                (cons y x))
 (define-motion word-back
                (loop while (and (> x 0) (isspace (character-at y (1- x))))
-                     do (dec! x))
+                     do (decf x))
                (loop while (and (> x 0) (not (isspace (character-at y (1- x)))))
-                     do (dec! x))
+                     do (decf x))
                (cons y x))
 
 (bind-motion cleft #\h)
@@ -61,16 +58,22 @@
 (bind-motion word-back #\b)
 
 
-;(defmacro define-mutation (name bindings perform undo)
-;  `(let ,(map (lambda (x) (list (car x) #<undefined>)) bindings) #L`(,(car $) #<undefined>)
-;     (with-let *motions*
-;               (define ,name (list
-;                               ; prepare
-;                               (lambda () ,(map (lambda (x) `(set! ,@x)) bindings)) ; ,(map #L`(set! ,@$))
-;                               ,perform
-;                               ,undo)))))
-;(defmacro bind-mutation (mutation key)
-;              `(LOW-create-binding 'mutation ,key (apply LOW-make-mutation (*mutations* ',mutation))))
+(defmacro define-mutation (name bindings perform undo)
+  `(let ,(map (lambda (x) (list (car x) #<undefined>)) bindings) #L`(,(car $) #<undefined>)
+     (with-let *mutations*
+               (define ,name (list
+                               ; prepare
+                               (lambda () ,(map (lambda (x) `(set! ,@x)) bindings)) ; ,(map #L`(set! ,@$))
+                               ,perform
+                               ,undo)))))
+(defmacro bind-mutation (mutation key)
+              `(LOW-create-binding 'mutation ,key (apply LOW-make-mutation (*mutations* ',mutation))))
+
+(define-mutation delforward
+                 ()
+                 (lambda () (LOW-text-remove (car (cursor-location)) (cdr (cursor-location)) 1))
+                 (lambda () #f)) ;todo
+(bind-mutation delforward #\x)
 ;
 ;
 ;

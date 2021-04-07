@@ -39,9 +39,6 @@
                    ,@forms
                    ,sym)))
 
-; todo unicode character syntax (→ integer); maybe #_á?  Or overload #\á?  #'á
-; looks like cl but is legitimately really cute
-
 ; unescaped strings, with syntax like
 ; #q/foo/
 ; #q|bar\|
@@ -64,6 +61,7 @@
                 ; read the close-delimiter
                 (read-char))))
 (add-reader #\L `(lambda ($) ,(read)))
+; #'x ←→ (char->integer #\x), but with utf8 decoding
 (add-reader #\'
             (letrec ((read-continuation-bytes (macro (res n)
                                                      (let ((s (gensym)))

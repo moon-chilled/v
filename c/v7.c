@@ -4,6 +4,8 @@ static VV *get_vv(s7_scheme *s) {
 	return s7_c_pointer(s7_name_to_value(s, "___vv"));
 }
 
+struct s7_mutation { s7_pointer prepare, perform, undo; };
+
 static Loc motion_perform(const V *v, const void *state) {
 	s7_pointer f = (s7_pointer)state; //const correctness, thou art a foul temptress!
 
@@ -19,6 +21,19 @@ static Loc motion_perform(const V *v, const void *state) {
 	return r;
 }
 
+static void mutation_prepare(const V *v, void **state) {
+	struct s7_mutation *m = *state;
+	s7_call(v->vv->s, m->prepare, s7_nil(v->vv->s));
+}
+static void mutation_perform(V *v, const void *state) {
+	const struct s7_mutation *m = state;
+	s7_call(v->vv->s, m->perform, s7_nil(v->vv->s));
+}
+static void mutation_undo(V *v, const void *state) {
+	const struct s7_mutation *m = state;
+	s7_call(v->vv->s, m->undo, s7_nil(v->vv->s));
+}
+
 #define PRELUDE int __attribute__((unused)) _argument_number = 1; VV *vv = get_vv(s);
 #define POP(x, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); s7_pointer x = s7_car(args); args = s7_cdr(args); _argument_number++
 #define TPOP(T, x, get, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); T x = get(s7_car(args)); args = s7_cdr(args); _argument_number++
@@ -28,6 +43,8 @@ static Loc motion_perform(const V *v, const void *state) {
 #define CPOP(x, fn) TPOP(u1, x, s7_character, fn, s7_is_character, "character")
 #define PPOP(x, fn) POP(x, fn, s7_is_procedure, "procedure")
 
+//todo check aritability of functions
+
 // function -> cpointer
 static s7_pointer make_motion(s7_scheme *s, s7_pointer args) {PRELUDE
 #define H_make_motion "(LOW-make-motion fn) makes a motion out of fn"
@@ -35,7 +52,19 @@ static s7_pointer make_motion(s7_scheme *s, s7_pointer args) {PRELUDE
 	PPOP(f, "LOW-make-motion");
 
 	Function r = new_motion(f, motion_perform);
-	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_motion, s7_nil(s)); //todo reference vv->sym_function_motion
+	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_motion, s7_nil(s));
+}
+
+// function -> function -> function -> cpointer
+static s7_pointer make_mutation(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_make_mutation "(LOW-make-mutation prepare perform undo) makes a mutation out of its parameters"
+#define Q_make_mutation s7_make_signature(vv->s, 2, vv->sym_c_pointer_p, vv->sym_procedure_p, vv->sym_procedure_p, vv->sym_procedure_p)
+	PPOP(prepare, "LOW-make-motion");
+	PPOP(perform, "LOW-make-motion");
+	PPOP(undo, "LOW-make-motion");
+
+	Function r = new_mutation(onew(struct s7_mutation, .prepare=prepare, .perform=perform, .undo=undo), mutation_prepare, mutation_perform, mutation_undo);
+	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_mutation, s7_nil(s));
 }
 
 // symbol (mode) -> character -> cpointer -> nil
@@ -47,7 +76,7 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args) {PRELUDE
 	CPOP(ch, "LOW-create-binding");
 
 	POP(bj, "LOW-create-binding", s7_is_c_pointer, "c pointer");
-	if (!(s7_is_c_pointer_of_type(bj, vv->sym_function_function) || s7_is_c_pointer_of_type(bj, vv->sym_function_transformation) || s7_is_c_pointer_of_type(bj, vv->sym_function_motion))) {
+	if (!(s7_is_c_pointer_of_type(bj, vv->sym_function_function) || s7_is_c_pointer_of_type(bj, vv->sym_function_mutation) || s7_is_c_pointer_of_type(bj, vv->sym_function_motion))) {
 		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number, bj, "a c pointer with type function-function, function-transformation, or function-motion");
 	}
 	Function *f = s7_c_pointer(bj);
@@ -55,14 +84,14 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args) {PRELUDE
 	Keymap *km = NULL;
 	if (s7_is_eq(mode, vv->sym_insert)) km = &vv->km_insert;
 	else if (s7_is_eq(mode, vv->sym_motion)) km = &vv->km_motion;
-	else if (s7_is_eq(mode, vv->sym_transform)) km = &vv->km_transform;
+	else if (s7_is_eq(mode, vv->sym_mutation)) km = &vv->km_mutate;
 	else if (s7_is_eq(mode, vv->sym_function)) km = &vv->km_function;
 
 	if (!km) return s7_wrong_type_arg_error(s, "LOW-create-binding", 1, mode, "a symbol: one of insert, motion, transform, or function)");
 
 	km->ascii[ch] = cnew(*f);
 
-	return s7_nil(s);
+	return s7_f(s);
 }
 
 static s7_pointer cursor_location(s7_scheme *s, s7_pointer args) {PRELUDE
@@ -86,24 +115,48 @@ static s7_pointer character_count(s7_scheme *s, s7_pointer args) {PRELUDE
 }
 
 static s7_pointer character_at(s7_scheme *s, s7_pointer args) {PRELUDE
-#define H_character_at "(character-at y x) returns the character at location (y, x) in the current buffer, potentially truncated"
+#define H_character_at "(character-at y x) returns the character at location (y x) in the current buffer, potentially truncated"
 #define Q_character_at s7_make_signature(vv->s, 3, vv->sym_character_p, vv->sym_integer_p, vv->sym_integer_p)
 	URPOP(line, vv->v->b.tb.l, "character-at");
 	URPOP(col, vv->v->b.tb.lines[line].l, "character-at");
 	return s7_make_character(s, vv->v->b.tb.lines[line].glyphs[col]);
 }
 static s7_pointer codepoint_at(s7_scheme *s, s7_pointer args) {PRELUDE
-#define H_codepoint_at "(codepoint-at y x) returns the codepoint at location (y, x) in the current buffer"
+#define H_codepoint_at "(codepoint-at y x) returns the codepoint at location (y x) in the current buffer"
 #define Q_codepoint_at s7_make_signature(vv->s, 3, vv->sym_integer_p, vv->sym_integer_p, vv->sym_integer_p)
 	URPOP(line, vv->v->b.tb.l, "codepoint-at");
 	URPOP(col, vv->v->b.tb.lines[line].l, "codepoint-at");
 	return s7_make_integer(s, vv->v->b.tb.lines[line].glyphs[col]);
 }
 
+static s7_pointer text_remove(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_text_remove "(LOW-text-remove y x extent) removes 'extent' characters from position x in line y"
+#define Q_text_remove s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_integer_p, vv->sym_integer_p, vv->sym_integer_p)
+	URPOP(y, vv->v->b.tb.l, "LOW-text-remove");
+	URPOP(x, vv->v->b.tb.lines[y].l, "LOW-text-remove");
+	URPOP(extent, (usz)(vv->v->b.tb.lines[y].l + 1 - x), "LOW-text-remove");
+	tb_remove(&vv->v->b.tb, y, x, extent);
+	return s7_f(s);
+}
+
+static s7_pointer codepoint_insert(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_codepoint_insert "(LOW-codepoint-insert y x codepoint) inserts 'codepoint' at position (y x)"
+#define Q_codepoint_insert s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_integer_p, vv->sym_integer_p, vv->sym_integer_p)
+	URPOP(y, vv->v->b.tb.l, "LOW-codepoint-insert");
+	URPOP(x, vv->v->b.tb.lines[y].l, "LOW-codepoint-insert");
+	URPOP(codepoint, 1 << 21, "LOW-codepoint-insert");
+	glyph g = codepoint;
+	tb_insert(&vv->v->b.tb, y, x, &g, 1);
+	return s7_f(s);
+}
+
 void vs7_init(VV *vv) {
 #define FN(sn, cn, param) s7_define_typed_function(vv->s, sn, cn, param, param, false, H_ ## cn, Q_ ## cn)
 	FN("LOW-make-motion", make_motion, 1);
+	FN("LOW-make-mutation", make_mutation, 3);
 	FN("LOW-create-binding", create_binding, 3);
+	FN("LOW-text-remove", text_remove, 3);
+	FN("LOW-codepoint-insert", codepoint_insert, 3);
 	FN("cursor-location", cursor_location, 0);
 	FN("line-count", line_count, 0);
 	FN("character-count", character_count, 1);

@@ -6,11 +6,11 @@ typedef enum {
 	TypeStr,          // () -> Str.             e.g. the parameter to '/'.  (And 'i', sort of.)
 	TypeChar,         // () -> Char.            e.g. the parameter to 'r' or 't'
 	TypeMotion,       // (TB,Loc) -> Loc.       e.g. 'w'
-	TypeTransform,    // (TB,Loc) -> (TB,Loc).  e.g. 'x'
+	TypeMutation,     // (TB,Loc) -> (TB,Loc).  e.g. 'x'
 	TypeFunction,
 	TypeTop,
 	// todo text objects?
-	// can they replace motions with an implicit 'move' transformation?  (I
+	// can they replace motions with an implicit 'move' mutation?  (I
 	// kinda like that, need to figure out the relationship to input,
 	// though; it would never do to have to prefix every movement with an
 	// extra command.)
@@ -39,7 +39,7 @@ struct Function {
 			void (*prepare)(const V *v, void **state); //ex allocate, memoize...
 			void (*perform)(V *v, const void *state);
 			void (*undo)(V *v, const void *state);
-		} action;
+		} mutation;
 		struct {
 			void *state;
 			Mode mode;
@@ -51,7 +51,7 @@ struct Function {
 static inline Function new_str(const glyph *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
 static inline Function new_char(glyph g) { return (Function){.type={TypeChar}, .character=g}; }
 static inline Function new_motion(const void *state, Loc (*perform)(const V*,const void*)) { return (Function){.type={TypeMotion}, .motion={.state=state, .perform=perform}}; }
-static inline Function new_transformation(void *state, void (*perpare)(const V*, void**), void (*perform)(V*,const void*), void (*undo)(V*,const void*)) { return (Function){.type={TypeTransform}, .action={.state=state, .perform=perform, .undo=undo}}; }
+static inline Function new_mutation(void *state, void (*prepare)(const V*, void**), void (*perform)(V*,const void*), void (*undo)(V*,const void*)) { return (Function){.type={TypeMutation}, .mutation={.state=state, .prepare=prepare, .perform=perform, .undo=undo}}; }
 static inline Function new_function(void *state, Mode mode, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {
 	assert (ret != TypeFunction && parameter != TypeFunction);
 
@@ -67,9 +67,9 @@ static inline Function new_function(void *state, Mode mode, TypeType ret, TypeTy
 	return f;
 }
 
-extern Function transform_ins_nl, transform_prep_nl, transform_add_nl, transform_delback, transform_delforward;
-extern Function transform_insert, transform_normal;
-extern Function transform_insert_front, transform_insert_back;
+extern Function mutation_ins_nl, mutation_prep_nl, mutation_add_nl, mutation_delback, mutation_delforward;
+extern Function mutation_insert, mutation_normal;
+extern Function mutation_insert_front, mutation_insert_back;
 extern Function hof_delete;
 extern Function hof_move_until;
 

@@ -118,13 +118,13 @@ void msg(V *v, const char *fmt, ...) {
 Function *lookupg(VV *vv, Mode mode, glyph g) {
 	if (g >= 128) return NULL;
 	if ((mode & ModeMotion) && vv->km_motion.ascii[g]) return vv->km_motion.ascii[g];
-	if ((mode & ModeTransform) && vv->km_transform.ascii[g]) return vv->km_transform.ascii[g];
+	if ((mode & ModeMutate) && vv->km_mutate.ascii[g]) return vv->km_mutate.ascii[g];
 	if ((mode & ModeFunction) && vv->km_function.ascii[g]) return vv->km_function.ascii[g];
 	return NULL;
 }
 Function *lookup_special(VV *vv, Mode mode, SpecialKey k) {
 	if ((mode & ModeMotion) && vv->km_motion.special[k]) return vv->km_motion.special[k];
-	if ((mode & ModeTransform) && vv->km_transform.special[k]) return vv->km_transform.special[k];
+	if ((mode & ModeMutate) && vv->km_mutate.special[k]) return vv->km_mutate.special[k];
 	if ((mode & ModeFunction) && vv->km_function.special[k]) return vv->km_function.special[k];
 
 	if (mode == ModeInsert) return vv->km_insert.special[k];
@@ -214,12 +214,12 @@ void init_vv(VV *vv) {
 #define PSYM(x) vv->sym_ ##x##_p = s7_make_symbol(vv->s, #x "?")
 	SSYM(v);
 	SYM(function_function, "function-function");
-	SYM(function_transformation, "function-transformation");
+	SYM(function_mutation, "function-mutation");
 	SYM(function_motion, "function-motion");
 	SSYM(default);
 	SSYM(insert);
 	SSYM(motion);
-	SSYM(transform);
+	SSYM(mutation);
 	SSYM(function);
 	PSYM(procedure);
 	PSYM(character);
@@ -237,21 +237,21 @@ void init_vv(VV *vv) {
 	//vv->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
 	//vv->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
 	//vv->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
-	vv->km_insert.special[SpecialKeyEnter] = cnew(transform_ins_nl);
-	vv->km_insert.special[SpecialKeyBackspace] = cnew(transform_delback);
-	vv->km_insert.special[SpecialKeyDelete] = cnew(transform_delforward);
-	vv->km_insert.special[SpecialKeyEscape] = cnew(transform_normal);
+	vv->km_insert.special[SpecialKeyEnter] = cnew(mutation_ins_nl);
+	vv->km_insert.special[SpecialKeyBackspace] = cnew(mutation_delback);
+	vv->km_insert.special[SpecialKeyDelete] = cnew(mutation_delforward);
+	vv->km_insert.special[SpecialKeyEscape] = cnew(mutation_normal);
 
-	vv->km_transform.ascii['x'] = cnew(transform_delforward);
-	vv->km_transform.ascii['i'] = cnew(transform_insert);
-	vv->km_transform.ascii['o'] = cnew(transform_add_nl);
-	vv->km_transform.ascii['O'] = cnew(transform_prep_nl);
-	vv->km_transform.ascii['I'] = cnew(transform_insert_front);
-	vv->km_transform.ascii['A'] = cnew(transform_insert_back);
+	//vv->km_mutate.ascii['x'] = cnew(mutation_delforward);
+	vv->km_mutate.ascii['i'] = cnew(mutation_insert);
+	vv->km_mutate.ascii['o'] = cnew(mutation_add_nl);
+	vv->km_mutate.ascii['O'] = cnew(mutation_prep_nl);
+	vv->km_mutate.ascii['I'] = cnew(mutation_insert_front);
+	vv->km_mutate.ascii['A'] = cnew(mutation_insert_back);
 
 	vv->km_motion.ascii['t'] = cnew(hof_move_until);
 
-	vv->km_transform.ascii['d'] = cnew(hof_delete);
+	vv->km_mutate.ascii['d'] = cnew(hof_delete);
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 
 	vs7_init(vv);
