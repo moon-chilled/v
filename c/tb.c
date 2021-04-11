@@ -120,7 +120,7 @@ void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *
 			//drawing code isn't going to set send_nl anyway...
 		}
 
-		if (nc.bx+(tbi->mode == TbiMode_StopBeforeNl) < tbi->tb->lines[nc.y].bsz) {
+		if (nc.gx+(tbi->mode == TbiMode_StopBeforeNl) < tbi->tb->lines[nc.y].gsz) {
 			nc.bx += u8_advance(tbi->tb->lines[nc.y].chars[nc.bx]);
 			nc.gx++;
 		} else if (tbi->mode == TbiMode_EatEverything && nc.y+1 < tbi->tb->l) {
