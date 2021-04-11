@@ -1,7 +1,9 @@
 #include "v.h"
 
+#if 0
 static void perform_delete(V *v, const void *state) {
 	const Loc *dst = state;
+#if 0
 	if (dst->y < v->b.loc.y) {
 		for (usz i = dst->y + 1; i < v->b.loc.y-1; i++) {
 			tb_remove_line(&v->b.tb, dst->y + 1);
@@ -16,14 +18,10 @@ static void perform_delete(V *v, const void *state) {
 		assert(0); //todo
 		return;
 	}
+#endif
+	assert (dst->y == v->b.loc.y); //todo
 
-	//intra-line
-	if (dst->x < v->b.loc.x) {
-		tb_remove(&v->b.tb, dst->y, dst->x, v->b.loc.x - dst->x);
-		v->b.loc.x = dst->x;
-	} else {
-		tb_remove(&v->b.tb, dst->y, v->b.loc.x, dst->x - v->b.loc.x);
-	}
+	b_remove(&v->b, dst->col);
 }
 static void undo_delete(V *v, const void *state) { assert(0); /*todo*/ }
 static Function deleter(const V *v, void *state, const Function *other) {
@@ -54,29 +52,32 @@ static Function mover_until(const V *v, void *state, const Function *other) {
 HOF(move_until, ModeInsert, TypeMotion, TypeChar, mover_until);
 HOF(delete, ModeDefault, TypeMutation, TypeMotion, deleter);
 #undef HOF
-
+#endif
 
 #define EMUT(name, fprepare, fperform, fundo) Function mutation_ ## name = {.type={TypeMutation}, .mutation={.prepare=fprepare, .perform=fperform, .undo=fundo}}
 #define MUT(name) EMUT(name, prepare_ ## name, perform_ ## name, undo_ ## name)
 
-static void prepare_stash_x(const V *v, void **state) {
-	*state = (void*)v->b.loc.x;
+static void prepare_stash_col(const V *v, void **state) {
+	*state = cnew(v->b.loc.col);
 }
 static void perform_ins_nl(V *v, const void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);
-        usz l = v->b.tb.lines[v->b.loc.y - 1].l - v->b.loc.x;
-        tb_insert(&v->b.tb, v->b.loc.y, 0, v->b.tb.lines[v->b.loc.y - 1].glyphs + v->b.loc.x, l);
-        tb_remove(&v->b.tb, v->b.loc.y - 1, v->b.loc.x, l);
-        v->b.loc.x = 0;
+        usz bl = v->b.tb.lines[v->b.loc.y - 1].bsz - v->b.loc.bx;
+	usz gl;
+        tb_insert(&v->b.tb, v->b.loc.y, 0, v->b.tb.lines[v->b.loc.y - 1].chars + v->b.loc.bx, bl, &gl);
+        tb_remove(&v->b.tb, v->b.loc.y - 1, v->b.loc.bx, bl, gl);
+        v->b.loc.bx = v->b.loc.gx = 0;
 }
 static void undo_ins_nl(V *v, const void *state) {
 	v->b.loc.y--;
-	v->b.loc.x = v->b.tb.lines[v->b.loc.y].l;
-	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, v->b.tb.lines[v->b.loc.y + 1].glyphs, v->b.tb.lines[v->b.loc.y + 1].l);
+	v->b.loc.bx = v->b.tb.lines[v->b.loc.y].bsz;
+	v->b.loc.gx = v->b.tb.lines[v->b.loc.y].gsz;
+	tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.bx, v->b.tb.lines[v->b.loc.y + 1].chars, v->b.tb.lines[v->b.loc.y + 1].bsz, &(usz){0});
 	tb_remove_line(&v->b.tb, v->b.loc.y + 1);
 }
-EMUT(ins_nl, prepare_stash_x, perform_ins_nl, undo_ins_nl);
+EMUT(ins_nl, prepare_stash_col, perform_ins_nl, undo_ins_nl);
 
+#if 0
 static void perform_add_nl(V *v, const void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);
         v->b.loc.x = 0;
@@ -85,7 +86,7 @@ static void undo_add_nl(V *v, const void *state) {
 	tb_remove_line(&v->b.tb, v->b.loc.y--);
 	v->b.loc.x = (usz)state;
 }
-EMUT(add_nl, prepare_stash_x, perform_add_nl, undo_add_nl);
+EMUT(add_nl, prepare_stash_col, perform_add_nl, undo_add_nl);
 
 
 static void perform_prep_nl(V *v, const void *state) {
@@ -97,8 +98,10 @@ static void undo_prep_nl(V *v, const void *state) {
 	undo_add_nl(v, state);
 	v->mode = ModeNormal; //todo wrong
 }
-EMUT(prep_nl, prepare_stash_x, perform_prep_nl, undo_prep_nl);
+EMUT(prep_nl, prepare_stash_col, perform_prep_nl, undo_prep_nl);
+#endif
 
+#if 0
 static void prepare_delback(const V *v, void **state) {
 	if (v->b.loc.x) *state = (void*)(usz)v->b.tb.lines[v->b.loc.y].glyphs[v->b.loc.x-1];
 }
@@ -120,6 +123,7 @@ static void undo_delforward(V *v, const void *state) {
 	if (v->b.loc.x < v->b.tb.lines[v->b.loc.y].l) tb_insert(&v->b.tb, v->b.loc.y, v->b.loc.x, &(glyph){(glyph)(usz)state}, 1);
 }
 MUT(delforward);
+#endif
 
 static void prepare_modeswitch(const V *v, void **state) {
 	*state = (void*)(usz)v->mode;
@@ -132,6 +136,7 @@ EMUT(insert, prepare_modeswitch, perform_insert, undo_modeswitch);
 static void perform_normal(V *v, const void *state) { v->mode = ModeNormal; }
 EMUT(normal, prepare_modeswitch, perform_normal, undo_modeswitch);
 
+#if 0
 struct if_state { Mode old_mode; usz old_x; };
 static void prepare_if_state(const V *v, void **state) {
 	*state = onew(struct if_state, .old_mode=v->mode, .old_x=v->b.loc.x);
@@ -141,5 +146,7 @@ static void perform_insert_front(V *v, const void *state) { v->b.loc.x = 0; v->m
 static void perform_insert_back(V *v, const void *state) { v->b.loc.x = v->b.tb.lines[v->b.loc.y].l; v->mode = ModeInsert; }
 EMUT(insert_front, prepare_if_state, perform_insert_front, undo_if);
 EMUT(insert_back, prepare_if_state, perform_insert_back, undo_if);
+#endif
+
 #undef MUT
 #undef EMUT

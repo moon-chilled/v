@@ -1,6 +1,6 @@
 #include "v.h"
 
-usz utf8d1(glyph *o, const unsigned char *i) {
+usz utf8d1(u4 *o, const unsigned char *i) {
 	if (0xf8 <= *i) return 0;
 	if (0xf0 <= *i) {
 		if (i[1] >> 6 != 2 || i[2] >> 6 != 2 || i[3] >> 6 != 2 ) return 0;
@@ -32,12 +32,12 @@ usz utf8d1(glyph *o, const unsigned char *i) {
 	return 1;
 }
 
-const glyph *from_utf8(const unsigned char *text, usz *l) {
+const u4 *from_utf8(const unsigned char *text, usz *l) {
 	*l = 0;
 
-	glyph *ret = NULL;
+	u4 *ret = NULL;
 	while (*text) {
-		ret = GC_realloc(ret, ++*l * sizeof(glyph));
+		ret = GC_realloc(ret, ++*l * sizeof(u4));
 		usz n = utf8d1(ret + *l - 1, text);
 		assert(n);
 		text += n;
@@ -115,11 +115,11 @@ void msg(V *v, const char *fmt, ...) {
 	tickit_window_expose(v->message_window, NULL);
 }
 
-Function *lookupg(VV *vv, Mode mode, glyph g) {
-	if (g >= 128) return NULL;
-	if ((mode & ModeMotion) && vv->km_motion.ascii[g]) return vv->km_motion.ascii[g];
-	if ((mode & ModeMutate) && vv->km_mutate.ascii[g]) return vv->km_mutate.ascii[g];
-	if ((mode & ModeFunction) && vv->km_function.ascii[g]) return vv->km_function.ascii[g];
+Function *lookupg(VV *vv, Mode mode, u1 c) {
+	if (c >= 128) return NULL;
+	if ((mode & ModeMotion) && vv->km_motion.ascii[c]) return vv->km_motion.ascii[c];
+	if ((mode & ModeMutate) && vv->km_mutate.ascii[c]) return vv->km_mutate.ascii[c];
+	if ((mode & ModeFunction) && vv->km_function.ascii[c]) return vv->km_function.ascii[c];
 	return NULL;
 }
 Function *lookup_special(VV *vv, Mode mode, SpecialKey k) {
@@ -136,19 +136,18 @@ static int on_key(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	V *v = data;
 
 	if (info->type == TICKIT_KEYEV_TEXT) {
-		usz l;
-		const glyph *new = from_utf8((const unsigned char*)info->str, &l);
-
 		if (v->mode == ModeInsert) {
-			for (usz i = 0; i < l; i++) {
-				Function f = new_char(new[i]);
-				v_push(v, &f);
-			}
+			usz l = strlen(info->str);
+			const u1 *n = memcpy(GC_malloc(1+l), info->str, 1+l);
+			Function f = new_str(n, l);
+			v_push(v, &f);
 		} else {
-			for (usz i = 0; i < l; i++) {
-				Function *f = lookupg(v->vv, v->mode, new[i]);
+			//const glyph *new = from_utf8((const u1*)info->str, &l);
+
+			for (; *info->str; info->str++) {
+				Function *f = lookupg(v->vv, v->mode, *info->str);
 				if (f) v_push(v, f);
-				else msg(v, "No such command '%c'", new[i]);
+				else msg(v, "No such command '%c'", *info->str);
 			}
 		}
 	} else if (info->type == TICKIT_KEYEV_KEY) {
@@ -173,15 +172,25 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	TickitPen *eol = tickit_pen_new();
 	set_pen_colour(eol, 0x0090ee);
 
+	usz vx = 0;
 	for (usz i = 0; i < v->b.tb.l; i++) {
 		tickit_renderbuffer_setpen(info->rb, normal);
-		for (usz j = 0; j < v->b.tb.lines[i].l; j++) {
-			tickit_renderbuffer_char_at(info->rb, i, j, v->b.tb.lines[i].glyphs[j]);
+		TextBufferIter *tbi = tb_iter(&v->b.tb, (Loc){.y=i}, TbiMode_StopBeforeNl, true, false);
+		bool theline = tbi_cursor(tbi).y == v->b.loc.y;
+		usz voff = 0;
+		while (!tbi_out(tbi)) {
+			const u1 *text;
+			usz bext, vext;
+			tbi_read(tbi, true, &text, &bext, &vext);
+			tickit_renderbuffer_textn_at(info->rb, i, voff, (const char*)text, bext);
+			// no vy.  Vertical tab can fuck RIGHT off
+			voff += vext;
+			if (theline && tbi_cursor(tbi).gx <= v->b.loc.gx) vx += vext;
 		}
 		tickit_renderbuffer_setpen(info->rb, eol);
-		tickit_renderbuffer_char_at(info->rb, i, v->b.tb.lines[i].l, '$');
+		tickit_renderbuffer_char(info->rb, '$');
 	}
-	tickit_window_set_cursor_position(win, v->b.loc.y, v->b.loc.x);
+	tickit_window_set_cursor_position(win, v->b.loc.y, vx);
 
 	tickit_pen_unref(normal);
 	tickit_pen_unref(eol);
@@ -213,6 +222,8 @@ void init_vv(VV *vv) {
 #define SSYM(x) vv->sym_ ##x = s7_make_symbol(vv->s, #x)
 #define PSYM(x) vv->sym_ ##x##_p = s7_make_symbol(vv->s, #x "?")
 	SSYM(v);
+	SYM(text_buffer_iter, "text-buffer-iter");
+	SSYM(loc);
 	SYM(function_function, "function-function");
 	SYM(function_mutation, "function-mutation");
 	SYM(function_motion, "function-motion");
@@ -221,6 +232,9 @@ void init_vv(VV *vv) {
 	SSYM(motion);
 	SSYM(mutation);
 	SSYM(function);
+	SYM(stop_before_nl, "stop-before-newline");
+	SYM(stop_after_nl, "stop-after-newline");
+	SYM(eat_everything, "eat-everything");
 	PSYM(procedure);
 	PSYM(character);
 	SYM(c_pointer_p, "c-pointer?");
@@ -228,6 +242,8 @@ void init_vv(VV *vv) {
 	SSYM(not);
 	PSYM(pair);
 	PSYM(integer);
+	PSYM(string);
+	PSYM(boolean);
 #undef PSYM
 #undef SSYM
 #undef SYM
@@ -238,20 +254,20 @@ void init_vv(VV *vv) {
 	//vv->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
 	//vv->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
 	vv->km_insert.special[SpecialKeyEnter] = cnew(mutation_ins_nl);
-	vv->km_insert.special[SpecialKeyBackspace] = cnew(mutation_delback);
-	vv->km_insert.special[SpecialKeyDelete] = cnew(mutation_delforward);
+	//vv->km_insert.special[SpecialKeyBackspace] = cnew(mutation_delback);
+	//vv->km_insert.special[SpecialKeyDelete] = cnew(mutation_delforward);
 	vv->km_insert.special[SpecialKeyEscape] = cnew(mutation_normal);
 
 	//vv->km_mutate.ascii['x'] = cnew(mutation_delforward);
 	vv->km_mutate.ascii['i'] = cnew(mutation_insert);
-	vv->km_mutate.ascii['o'] = cnew(mutation_add_nl);
-	vv->km_mutate.ascii['O'] = cnew(mutation_prep_nl);
-	vv->km_mutate.ascii['I'] = cnew(mutation_insert_front);
-	vv->km_mutate.ascii['A'] = cnew(mutation_insert_back);
+	//vv->km_mutate.ascii['o'] = cnew(mutation_add_nl);
+	//vv->km_mutate.ascii['O'] = cnew(mutation_prep_nl);
+	//vv->km_mutate.ascii['I'] = cnew(mutation_insert_front);
+	//vv->km_mutate.ascii['A'] = cnew(mutation_insert_back);
 
-	vv->km_motion.ascii['t'] = cnew(hof_move_until);
+	//vv->km_motion.ascii['t'] = cnew(hof_move_until);
 
-	vv->km_mutate.ascii['d'] = cnew(hof_delete);
+	//vv->km_mutate.ascii['d'] = cnew(hof_delete);
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 
 	vs7_init(vv);

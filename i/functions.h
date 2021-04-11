@@ -28,8 +28,8 @@ struct Function {
 	Type type; //-> higher_order if .arity
 	//todo defer?
 	union {
-		struct { const glyph *s; usz l; } str;
-		glyph character;
+		struct { const u1 *s; usz l; } str;
+		u1 character;
 		struct {
 			const void *state;
 			Loc (*perform)(const V *v, const void *state);
@@ -48,8 +48,8 @@ struct Function {
 	};
 };
 
-static inline Function new_str(const glyph *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
-static inline Function new_char(glyph g) { return (Function){.type={TypeChar}, .character=g}; }
+static inline Function new_str(const u1 *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
+static inline Function new_char(u1 c) { return (Function){.type={TypeChar}, .character=c}; }
 static inline Function new_motion(const void *state, Loc (*perform)(const V*,const void*)) { return (Function){.type={TypeMotion}, .motion={.state=state, .perform=perform}}; }
 static inline Function new_mutation(void *state, void (*prepare)(const V*, void**), void (*perform)(V*,const void*), void (*undo)(V*,const void*)) { return (Function){.type={TypeMutation}, .mutation={.state=state, .prepare=prepare, .perform=perform, .undo=undo}}; }
 static inline Function new_function(void *state, Mode mode, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {

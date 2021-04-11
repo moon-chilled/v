@@ -5,29 +5,29 @@
 (define *motions* (inlet))
 (define *mutations* (inlet))
 
-(defmacro with-cursor-location (ps :rest body)
-              (let ((yx (gensym)))
-                `(let* ((,yx (cursor-location))
-                        (,(car ps) (car ,yx))
-                        (,(cadr ps) (cdr ,yx)))
-                   ,@body)))
-
 (defmacro define-motion (name :rest body)
-              `(with-let *motions*
-                         (define (,name) (with-cursor-location (y x) ,@body))))
+  `(with-let *motions*
+             (define (,name) ,@body)))
 (defmacro bind-motion (motion key)
               `(LOW-create-binding 'motion ,key (LOW-make-motion (*motions* ',motion))))
 
 (defun isspace (c) (if (char-position c " \t\n\r\f") #t #f))
 
-(define-motion cleft (cons y (if (> x 0) (1- x) x)))
+(define-motion cleft
+               (let ((it (iterate 'stop-after-newline #f #f)))
+                 (iterator-read it #t)
+                 (iterator-loc it)))
+(define-motion cright
+               (let ((it (iterate 'stop-before-newline #t #f)))
+                 (unless (iterator-out it) (iterator-read it #t))
+                 (iterator-loc it)))
+
 (define-motion cdown
                (let ((y (if (>= (1+ y) (line-count)) y (1+ y))))
                  (cons y (min x (character-count y)))))
 (define-motion cup
                (let ((y (if (> y 0) (1- y) y)))
                  (cons y (min x (character-count y)))))
-(define-motion cright (cons y (if (>= x (character-count y)) x (1+ x))))
 (define-motion eol (cons y (character-count y)))
 (define-motion bol (cons y 0))
 (define-motion bof '(0 . 0))
