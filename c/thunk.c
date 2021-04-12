@@ -33,7 +33,7 @@ static u1 arg_offs[4] = {
 // todo proper allocator
 // w^x makes this a pain
 // also, need to come up with a better strategy once we switch to the s7 gc
-s7_function create_thunk(void *function_addr, u1 num_args, ...) {
+void *create_thunk(void *function_addr, u1 num_args, ...) {
 	static _Thread_local char *mem_start = NULL, *mptr = NULL, *mem_end = NULL;
 	va_list ap;
 	va_start(ap, num_args);
@@ -85,5 +85,5 @@ s7_function create_thunk(void *function_addr, u1 num_args, ...) {
 
 	va_end(ap);
 
-	return (s7_function)ret;
+	return ret;
 }
