@@ -1,4 +1,4 @@
-CFLAGS := -Ii -Is7 -g -Wall -Wextra -Werror -Wno-unused-parameter -Wno-parentheses -Wno-missing-field-initializers -std=c11
+CFLAGS := -Ii -Is7 -g -Wall -Wextra -Werror -Wno-unused-parameter -Wno-parentheses -Wno-missing-field-initializers -Wno-sign-compare -std=gnu11
 LFLAGS := -ltickit -lgc -lm
 ifneq ($(CC),tcc)
 CFLAGS += -MMD
@@ -6,7 +6,8 @@ else
 LFLAGS += -L/usr/local/lib
 endif
 CCLD ?= $(CC)
-C := c/cv.c c/tb.c c/functions.c c/function.c c/v.c c/v7.c s7/s7.c
+C := c/cv.c c/tb.c c/functions.c c/function.c c/v.c c/v7.c c/thunk.c
+C += s7/s7.c
 O := $(patsubst %.c,o/%.o,$(C))
 
 v: $(O)

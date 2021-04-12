@@ -1,0 +1,5 @@
+Read https://xi-editor.io/docs/rope_science_00.html
+Somewhat different structure (two levels of btree; one for lines, one for contents of a line), but lots of good stuff in there.
+Particularly parser/syntax highlight stuff.
+
+Read yi paper https://publications.lib.chalmers.se/records/fulltext/local_94979.pdf

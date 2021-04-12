@@ -37,8 +37,8 @@
                  (if (< y 0)
                    c
                    (cursor-at y (min (cursor-gx c) (grapheme-count y))))))
-(define-motion eol (let ((y (cursor-y (cursor-location)))
-                         (UNSAFE-create-cursor y (grapheme-count y) (byte-count y)))))
+(define-motion eol (let ((y (cursor-y (cursor-location))))
+                     (UNSAFE-create-cursor y (grapheme-count y) (byte-count y))))
 (define-motion bol (UNSAFE-create-cursor (cursor-y (cursor-location)) 0 0))
 (define-motion bof (UNSAFE-create-cursor 0 0 0))
 (define-motion eof (let ((y (1- (line-count))))

@@ -1,9 +1,5 @@
 #include "v.h"
 
-static VV *get_vv(s7_scheme *s) {
-	return s7_c_pointer(s7_name_to_value(s, "___vv"));
-}
-
 struct s7_mutation { s7_pointer prepare, perform, undo; };
 
 static Loc motion_perform(const V *v, const void *state) {
@@ -31,7 +27,7 @@ static void mutation_undo(V *v, const void *state) {
 	s7_call(v->vv->s, m->undo, s7_nil(v->vv->s));
 }
 
-#define PRELUDE int __attribute__((unused)) _argument_number = 1; VV *vv = get_vv(s);
+#define PRELUDE int __attribute__((unused)) _argument_number = 1;
 #define POP(x, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); s7_pointer x = s7_car(args); args = s7_cdr(args); _argument_number++
 #define TPOP(T, x, get, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); T x = get(s7_car(args)); args = s7_cdr(args); _argument_number++
 #define STPOP(T, x, get, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); T x = get(s, s7_car(args)); args = s7_cdr(args); _argument_number++
@@ -46,7 +42,7 @@ static void mutation_undo(V *v, const void *state) {
 //todo check aritability of functions
 
 // function -> cpointer
-static s7_pointer make_motion(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer make_motion(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_make_motion "(LOW-make-motion fn) makes a motion out of fn"
 #define Q_make_motion s7_make_signature(vv->s, 2, vv->sym_c_pointer_p, vv->sym_procedure_p)
 	PPOP(f, "LOW-make-motion");
@@ -56,7 +52,7 @@ static s7_pointer make_motion(s7_scheme *s, s7_pointer args) {PRELUDE
 }
 
 // function -> function -> function -> cpointer
-static s7_pointer make_mutation(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer make_mutation(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_make_mutation "(LOW-make-mutation prepare perform undo) makes a mutation out of its parameters"
 #define Q_make_mutation s7_make_signature(vv->s, 2, vv->sym_c_pointer_p, vv->sym_procedure_p, vv->sym_procedure_p, vv->sym_procedure_p)
 	PPOP(prepare, "LOW-make-motion");
@@ -68,7 +64,7 @@ static s7_pointer make_mutation(s7_scheme *s, s7_pointer args) {PRELUDE
 }
 
 // symbol (mode) -> character -> cpointer -> nil
-static s7_pointer create_binding(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_create_binding "(LOW-create-binding mode character pointer) establishes a mapping in mode from character to the function indicated by pointer"
 #define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, vv->sym_character_p, vv->sym_c_pointer_p)
 	POP(mode, "LOW-create-binding", s7_is_symbol, "symbol");
@@ -94,19 +90,19 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_f(s);
 }
 
-static s7_pointer cursor_location(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer cursor_location(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_cursor_location "(cursor-location) returns returns the current cursor location"
 #define Q_cursor_location s7_make_signature(vv->s, 1, vv->sym_c_pointer_p)
 	return s7_make_c_pointer_with_type(s, cnew(vv->v->b.loc), vv->sym_loc, s7_nil(s));
 }
 
-static s7_pointer line_count(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer line_count(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_line_count "(line-count) returns the number of lines in the current buffer"
 #define Q_line_count s7_make_signature(vv->s, 1, vv->sym_integer_p)
 	return s7_make_integer(s, vv->v->b.tb.l);
 }
 
-static s7_pointer byte_count(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer byte_count(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_byte_count "(byte-count line) returns the number of bytes in line 'line' of the current buffer"
 #define Q_byte_count s7_make_signature(vv->s, 2, vv->sym_integer_p, vv->sym_integer_p)
 	URPOP(line, vv->v->b.tb.l, "byte-count");
@@ -114,7 +110,7 @@ static s7_pointer byte_count(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_make_integer(s, vv->v->b.tb.lines[line].bsz);
 }
 
-static s7_pointer grapheme_count(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer grapheme_count(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_grapheme_count "(grapheme-count line) returns the number of graphemes in line 'line' of the current buffer"
 #define Q_grapheme_count s7_make_signature(vv->s, 2, vv->sym_integer_p, vv->sym_integer_p)
 	URPOP(line, vv->v->b.tb.l, "grapheme-count");
@@ -122,24 +118,7 @@ static s7_pointer grapheme_count(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_make_integer(s, vv->v->b.tb.lines[line].gsz);
 }
 
-#if 0
-static s7_pointer character_at(s7_scheme *s, s7_pointer args) {PRELUDE
-#define H_character_at "(character-at y x) returns the character at location (y x) in the current buffer, potentially truncated"
-#define Q_character_at s7_make_signature(vv->s, 3, vv->sym_character_p, vv->sym_integer_p, vv->sym_integer_p)
-	URPOP(line, vv->v->b.tb.l, "character-at");
-	URPOP(col, vv->v->b.tb.lines[line].l, "character-at");
-	return s7_make_character(s, vv->v->b.tb.lines[line].glyphs[col]);
-}
-static s7_pointer codepoint_at(s7_scheme *s, s7_pointer args) {PRELUDE
-#define H_codepoint_at "(codepoint-at y x) returns the codepoint at location (y x) in the current buffer"
-#define Q_codepoint_at s7_make_signature(vv->s, 3, vv->sym_integer_p, vv->sym_integer_p, vv->sym_integer_p)
-	URPOP(line, vv->v->b.tb.l, "codepoint-at");
-	URPOP(col, vv->v->b.tb.lines[line].l, "codepoint-at");
-	return s7_make_integer(s, vv->v->b.tb.lines[line].glyphs[col]);
-}
-#endif
-
-static s7_pointer text_remove(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer text_remove(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_text_remove "(LOW-text-remove target) removes characters between the current cursor position and the x position indicated by the target"
 #define Q_text_remove s7_make_signature(vv->s, 2, vv->sym_not, vv->sym_c_pointer_p)
 	POP(pl, "LOW-create-binding", s7_is_c_pointer, "c pointer");
@@ -153,7 +132,7 @@ static s7_pointer text_remove(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_f(s);
 }
 
-static s7_pointer text_insert(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer text_insert(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_text_insert "(LOW-text-insert loc text) inserts 'text' at the position indicated by 'loc'"
 #define Q_text_insert s7_make_signature(vv->s, 2, vv->sym_not, vv->sym_c_pointer_p, vv->sym_string_p)
 	POP(pl, "LOW-text-insert", s7_is_c_pointer, "c pointer");
@@ -168,7 +147,7 @@ static s7_pointer text_insert(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_f(s);
 }
 
-static s7_pointer iterate(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer iterate(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_iterate "(iterate mode forward autosquish) created a new iterator in the current text buffer starting at the current cursor position according to the specified arguments"
 #define Q_iterate s7_make_signature(vv->s, 4, vv->sym_c_pointer_p, vv->sym_boolean_p, vv->sym_boolean_p, vv->sym_boolean_p)
 	POP(smode, "iterate", s7_is_symbol, "symbol");
@@ -186,7 +165,7 @@ static s7_pointer iterate(s7_scheme *s, s7_pointer args) {PRELUDE
 }
 
 //todo vvv should be methods
-static s7_pointer iterator_out(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer iterator_out(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_iterator_out "(iterator-out iterator) returns #t if the passed iterator will return no more"
 #define Q_iterator_out s7_make_signature(vv->s, 2, vv->sym_boolean_p, vv->sym_c_pointer_p)
 	POP(pi, "iterator-out", s7_is_c_pointer, "c pointer");
@@ -196,7 +175,7 @@ static s7_pointer iterator_out(s7_scheme *s, s7_pointer args) {PRELUDE
 
 	return s7_make_boolean(s, tbi_out(s7_c_pointer(pi)));
 }
-static s7_pointer iterator_loc(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer iterator_loc(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_iterator_loc "(iterator-loc iterator) returns the current location of the passed iterator"
 #define Q_iterator_loc s7_make_signature(vv->s, 2, vv->sym_c_pointer_p, vv->sym_c_pointer_p)
 	POP(pi, "iterator-loc", s7_is_c_pointer, "c pointer");
@@ -206,7 +185,7 @@ static s7_pointer iterator_loc(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_make_c_pointer_with_type(s, cnew(tbi_cursor(s7_c_pointer(pi))), vv->sym_loc, s7_nil(s));
 }
 
-static s7_pointer iterator_read(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer iterator_read(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_iterator_read "(iterator-read iterator advance) returns the current readation of the passed iterator"
 #define Q_iterator_read s7_make_signature(vv->s, 3, vv->sym_string_p, vv->sym_c_pointer_p, vv->sym_boolean_p)
 	POP(pi, "iterator-read", s7_is_c_pointer, "c pointer");
@@ -221,7 +200,7 @@ static s7_pointer iterator_read(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_make_string_with_length(s, (const char*)str, bsz); //todo (values str vsz) or similar?
 }
 
-static s7_pointer create_cursor(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer create_cursor(s7_scheme *s, s7_pointer args, VV *vv) {int _argument_number = 1;
 #define H_create_cursor "(UNSAFE-create-cursor y gx bx) creates a cursor.  Parameters are not checked."
 #define Q_create_cursor s7_make_signature(vv->s, 4, vv->sym_c_pointer_p, vv->sym_integer_p, vv->sym_integer_p, vv->sym_integer_p)
 	UPOP(y, "create-cursor");
@@ -230,7 +209,7 @@ static s7_pointer create_cursor(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_make_c_pointer_with_type(s, onew(Loc, .y=y, .gx=gx, .bx=bx), vv->sym_loc, s7_nil(s));
 }
 
-static s7_pointer cursor_at(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer cursor_at(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_cursor_at "(cursor-at y gx) creates a cursor corresponding to the point before grapheme gx on line y of the current buffer.  Potentially O(n)"
 #define Q_cursor_at s7_make_signature(vv->s, 3, vv->sym_c_pointer_p, vv->sym_integer_p, vv->sym_integer_p)
 	URPOP(y, vv->v->b.tb.l, "cursor-at");
@@ -239,7 +218,7 @@ static s7_pointer cursor_at(s7_scheme *s, s7_pointer args) {PRELUDE
 }
 
 //todo
-static s7_pointer cursor_y(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer cursor_y(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_cursor_y ""
 #define Q_cursor_y s7_make_signature(vv->s, 0)
 	POP(pl, "cursor-y", s7_is_c_pointer, "c pointer");
@@ -249,7 +228,7 @@ static s7_pointer cursor_y(s7_scheme *s, s7_pointer args) {PRELUDE
 	Loc *l = s7_c_pointer(pl);
 	return s7_make_integer(s, l->y);
 }
-static s7_pointer cursor_gx(s7_scheme *s, s7_pointer args) {PRELUDE
+static s7_pointer cursor_gx(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_cursor_gx ""
 #define Q_cursor_gx s7_make_signature(vv->s, 0)
 	POP(pl, "cursor-gx", s7_is_c_pointer, "c pointer");
@@ -263,27 +242,31 @@ static s7_pointer cursor_gx(s7_scheme *s, s7_pointer args) {PRELUDE
 // 'LOW': low-level functions that may be inconvenient to use; you may prefer to use the higher-level wrappers defined by the boot code
 // 'UNSAFE': unsafe functions that can create inconsistent state and whose use is prone to memory bugs
 void vs7_init(VV *vv) {
+	s7_pointer (*_v_thunk_typechecker)(s7_scheme*, s7_pointer, VV*);
 #define FN(sn, cn, param) s7_define_typed_function(vv->s, sn, cn, param, param, false, H_ ## cn, Q_ ## cn)
-	FN("UNSAFE-create-cursor", create_cursor, 3);
-	FN("LOW-make-motion", make_motion, 1);
-	FN("LOW-make-mutation", make_mutation, 3);
-	FN("LOW-create-binding", create_binding, 3);
-	FN("LOW-text-remove", text_remove, 1);
-	FN("LOW-text-insert", text_insert, 2);
-	FN("cursor-at", cursor_at, 2);
-	FN("cursor-location", cursor_location, 0);
+#define VVTFN(sn, cn, param) s7_define_typed_function(vv->s, sn, create_thunk(_v_thunk_typechecker=cn, 1, 2, vv), param, param, false, H_ ## cn, Q_ ## cn)
+	VVTFN("UNSAFE-create-cursor", create_cursor, 3);
+	VVTFN("LOW-make-motion", make_motion, 1);
+	VVTFN("LOW-make-mutation", make_mutation, 3);
+	VVTFN("LOW-create-binding", create_binding, 3);
+	VVTFN("LOW-text-remove", text_remove, 1);
+	VVTFN("LOW-text-insert", text_insert, 2);
+	VVTFN("cursor-at", cursor_at, 2);
+	VVTFN("cursor-location", cursor_location, 0);
 
-	FN("cursor-y", cursor_y, 1);
-	FN("cursor-gx", cursor_gx, 1);
+	VVTFN("cursor-y", cursor_y, 1);
+	VVTFN("cursor-gx", cursor_gx, 1);
 
-	FN("iterate", iterate, 3);
-	FN("iterator-out", iterator_out, 1);
-	FN("iterator-loc", iterator_loc, 1);
-	FN("iterator-read", iterator_read, 2);
+	VVTFN("iterate", iterate, 3);
+	VVTFN("iterator-out", iterator_out, 1);
+	VVTFN("iterator-loc", iterator_loc, 1);
+	VVTFN("iterator-read", iterator_read, 2);
 
-	FN("line-count", line_count, 0);
-	FN("byte-count", byte_count, 1);
-	FN("grapheme-count", grapheme_count, 1);
+	VVTFN("line-count", line_count, 0);
+	VVTFN("byte-count", byte_count, 1);
+	VVTFN("grapheme-count", grapheme_count, 1);
+#undef VVTFN
+#undef FN
 
 	s7_define_variable(vv->s, "___vv", s7_make_c_pointer(vv->s, vv)); //todo can we establish a side channel for this?
 

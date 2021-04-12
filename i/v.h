@@ -70,4 +70,6 @@ void msg(V *v, const char *fmt, ...);
 void v_push(V *v, Function *f);
 bool v_reduce(V *v);
 
+s7_function create_thunk(void *function_addr, u1 num_args, ...);
+
 #endif //CV_V_H
