@@ -2,7 +2,7 @@
 
 #include "v.h"
 
-// s7 refuses to pass me a 'context' pointer or anything like that
+// s7 refuses to pass me a 'context' pointer
 // harrumph, I say
 // I'll make it myself!
 
@@ -32,7 +32,7 @@ static u1 arg_offs[4] = {
 
 // todo proper allocator
 // w^x makes this a pain
-// also, need to come up with a better strategy once we switch to the s7 gc
+// also, need to come up with a better strategy after switching gcs
 void *create_thunk(void *function_addr, u1 num_args, ...) {
 	static _Thread_local char *mem_start = NULL, *mptr = NULL, *mem_end = NULL;
 	va_list ap;
@@ -65,7 +65,7 @@ void *create_thunk(void *function_addr, u1 num_args, ...) {
 		int arg_num = va_arg(ap, int);
 		assert (arg_num >= 0 && arg_num < sizeof(arg_offs));
 		u1 arg = arg_offs[arg_num];
-		void *ptr = va_arg(ap, void*);
+		u8 ptr = va_arg(ap, u8);
 
 		*mptr++ = 0x48 + (arg >> 3);        // REX.W.  If bit 4 of the arg is set, then also REX.B
 		*mptr++ = 0270 + (arg & 07);        // mov r64, qword
@@ -73,12 +73,12 @@ void *create_thunk(void *function_addr, u1 num_args, ...) {
 	}
 
 	if (small) {
-		*mptr++ = 0xe9; // jmp rel32
+		*mptr++ = 0351; // jmp rel32
 		memcpy(mptr, &(s4){faddr - (mptr + 4)}, 4); mptr += 4; // (the rel32 in question)
 	} else {
 		*mptr++ = 0x48; *mptr++ = 0270;     // mov rax, qword
 		memcpy(mptr, &faddr, 8); mptr += 8; // (the qword in question)
-		*mptr++ = 0xff; *mptr++ = 0340;     // jmp rax
+		*mptr++ = 0377; *mptr++ = 0340;     // jmp rax
 	}
 
 	mprotect(mem_start, PAGESZ, PROT_EXEC);
