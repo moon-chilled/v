@@ -27,19 +27,19 @@
 
 (define-motion cdown
                (let* ((c (cursor-location))
-                      (y (1+ (cursor-y c))))
+                      (y (1+ (c 'y))))
                  (if (>= y (line-count))
                    c
-                   (cursor-at y (min (cursor-gx c) (grapheme-count y))))))
+                   (cursor-at y (min (c 'gx) (grapheme-count y))))))
 (define-motion cup
                (let* ((c (cursor-location))
-                      (y (1- (cursor-y c))))
+                      (y (1- (c 'y))))
                  (if (< y 0)
                    c
-                   (cursor-at y (min (cursor-gx c) (grapheme-count y))))))
-(define-motion eol (let ((y (cursor-y (cursor-location))))
+                   (cursor-at y (min (c 'gx) (grapheme-count y))))))
+(define-motion eol (let ((y ((cursor-location) 'y)))
                      (UNSAFE-create-cursor y (grapheme-count y) (byte-count y))))
-(define-motion bol (UNSAFE-create-cursor (cursor-y (cursor-location)) 0 0))
+(define-motion bol (UNSAFE-create-cursor ((cursor-location) 'y) 0 0))
 (define-motion bof (UNSAFE-create-cursor 0 0 0))
 (define-motion eof (let ((y (1- (line-count))))
                      (UNSAFE-create-cursor y (grapheme-count y) (byte-count y))))

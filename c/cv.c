@@ -223,7 +223,6 @@ void init_vv(VV *vv) {
 #define PSYM(x) vv->sym_ ##x##_p = s7_make_symbol(vv->s, #x "?")
 	SSYM(v);
 	SYM(text_buffer_iter, "text-buffer-iter");
-	SSYM(loc);
 	SYM(function_function, "function-function");
 	SYM(function_mutation, "function-mutation");
 	SYM(function_motion, "function-motion");
@@ -235,6 +234,8 @@ void init_vv(VV *vv) {
 	SYM(stop_before_nl, "stop-before-newline");
 	SYM(stop_after_nl, "stop-after-newline");
 	SYM(eat_everything, "eat-everything");
+	SSYM(y);
+	SSYM(gx);
 	PSYM(procedure);
 	PSYM(character);
 	SYM(c_pointer_p, "c-pointer?");
