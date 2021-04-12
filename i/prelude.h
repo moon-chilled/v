@@ -24,8 +24,8 @@ typedef  int64_t s8;
 #define new(T,n) ((T*)GC_malloc(sizeof(T)*(n)))
 #define anew(T,...) ((T*)memcpy(GC_malloc(sizeof((T[]){__VA_ARGS__})),(T[]){__VA_ARGS__},sizeof((T[]){__VA_ARGS__})))
 #define onew(T,...) ((T*)memcpy(GC_malloc(sizeof(T)),&(T){__VA_ARGS__},sizeof(T)))
-#define cnew(o) (memcpy(GC_malloc(sizeof(o)),&(o),sizeof(o)))
-#define Cnew(T, o) (memcpy(GC_malloc(sizeof(T)),&(T){o},sizeof(T)))
+#define cnew(o) ({ __auto_type _cnew__x = o; (__typeof__(_cnew__x)*)memcpy(GC_malloc(sizeof(_cnew__x)),&_cnew__x,sizeof(_cnew__x)); })
+#define Cnew(T, o) cnew(((T)(o)))
 
 #define min(_x, _y) ((_x) < (_y) ? (_x) : (_y))
 #define max(_x, _y) ((_x) > (_y) ? (_x) : (_y))

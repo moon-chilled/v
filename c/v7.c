@@ -36,8 +36,9 @@ static void mutation_undo(V *v, const void *state) {
 #define TPOP(T, x, get, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); T x = get(s7_car(args)); args = s7_cdr(args); _argument_number++
 #define STPOP(T, x, get, fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); T x = get(s, s7_car(args)); args = s7_cdr(args); _argument_number++
 #define IPOP(x, fn) TPOP(s7_int, x, s7_integer, fn, s7_is_integer, "integer")
-#define RPOP(x, min, max, fn) if (!s7_is_pair(args) || !s7_is_integer(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), "integer"); s7_int x = s7_integer(s7_car(args)); if (x < (s7_int)min) { char buf[128]; sprintf(buf, ">=%lli", (long long)min); return s7_out_of_range_error(s, fn, _argument_number, s7_car(args), buf); }  if (x >= (s7_int)max) { char buf[128]; sprintf(buf, "<%lli", (long long)max); return s7_out_of_range_error(s, fn, _argument_number, s7_car(args), buf); } args = s7_cdr(args)
+#define RPOP(x, min, max, fn) if (!s7_is_pair(args) || !s7_is_integer(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), "integer"); s7_int x = s7_integer(s7_car(args)); if (x < (s7_int)(min)) { char buf[128]; sprintf(buf, ">=%lli", (long long)(min)); return s7_out_of_range_error(s, fn, _argument_number, s7_car(args), buf); }  if (x >= (s7_int)(max)) { char buf[128]; sprintf(buf, "<%lli", (long long)(max)); return s7_out_of_range_error(s, fn, _argument_number, s7_car(args), buf); } args = s7_cdr(args)
 #define URPOP(x, max, fn) RPOP(x ## _tmp, 0, max, fn); usz x = x ## _tmp
+#define UPOP(x, fn) URPOP(x, 1ll << 62, fn)
 #define CPOP(x, fn) TPOP(u1, x, s7_character, fn, s7_is_character, "character")
 #define PPOP(x, fn) POP(x, fn, s7_is_procedure, "procedure")
 #define BPOP(x, fn) STPOP(bool, x, s7_boolean, fn, s7_is_boolean, "boolean")
@@ -202,8 +203,7 @@ static s7_pointer iterator_loc(s7_scheme *s, s7_pointer args) {PRELUDE
 	if (!(s7_is_c_pointer_of_type(pi, vv->sym_text_buffer_iter))) {
 		return s7_wrong_type_arg_error(s, "LOW-text-insert", _argument_number, pi, "a c pointer with type text-buffer-iterator");
 	}
-	Loc l = tbi_cursor(s7_c_pointer(pi));
-	return s7_make_c_pointer_with_type(s, cnew(l), vv->sym_loc, s7_nil(s));
+	return s7_make_c_pointer_with_type(s, cnew(tbi_cursor(s7_c_pointer(pi))), vv->sym_loc, s7_nil(s));
 }
 
 static s7_pointer iterator_read(s7_scheme *s, s7_pointer args) {PRELUDE
@@ -221,15 +221,60 @@ static s7_pointer iterator_read(s7_scheme *s, s7_pointer args) {PRELUDE
 	return s7_make_string_with_length(s, (const char*)str, bsz); //todo (values str vsz) or similar?
 }
 
+static s7_pointer create_cursor(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_create_cursor "(UNSAFE-create-cursor y gx bx) creates a cursor.  Parameters are not checked."
+#define Q_create_cursor s7_make_signature(vv->s, 4, vv->sym_c_pointer_p, vv->sym_integer_p, vv->sym_integer_p, vv->sym_integer_p)
+	UPOP(y, "create-cursor");
+	UPOP(gx, "create-cursor");
+	UPOP(bx, "create-cursor");
+	return s7_make_c_pointer_with_type(s, onew(Loc, .y=y, .gx=gx, .bx=bx), vv->sym_loc, s7_nil(s));
+}
 
+static s7_pointer cursor_at(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_cursor_at "(cursor-at y gx) creates a cursor corresponding to the point before grapheme gx on line y of the current buffer.  Potentially O(n)"
+#define Q_cursor_at s7_make_signature(vv->s, 3, vv->sym_c_pointer_p, vv->sym_integer_p, vv->sym_integer_p)
+	URPOP(y, vv->v->b.tb.l, "cursor-at");
+	URPOP(gx, 1+vv->v->b.tb.lines[y].gsz, "cursor-at");
+	return s7_make_c_pointer_with_type(s, cnew(tb_cursor_at(&vv->v->b.tb, y, gx)), vv->sym_loc, s7_nil(s));
+}
+
+//todo
+static s7_pointer cursor_y(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_cursor_y ""
+#define Q_cursor_y s7_make_signature(vv->s, 0)
+	POP(pl, "cursor-y", s7_is_c_pointer, "c pointer");
+	if (!(s7_is_c_pointer_of_type(pl, vv->sym_loc))) {
+		return s7_wrong_type_arg_error(s, "cursor-gx", _argument_number, pl, "a c pointer with type loc");
+	}
+	Loc *l = s7_c_pointer(pl);
+	return s7_make_integer(s, l->y);
+}
+static s7_pointer cursor_gx(s7_scheme *s, s7_pointer args) {PRELUDE
+#define H_cursor_gx ""
+#define Q_cursor_gx s7_make_signature(vv->s, 0)
+	POP(pl, "cursor-gx", s7_is_c_pointer, "c pointer");
+	if (!(s7_is_c_pointer_of_type(pl, vv->sym_loc))) {
+		return s7_wrong_type_arg_error(s, "cursor-gx", _argument_number, pl, "a c pointer with type loc");
+	}
+	Loc *l = s7_c_pointer(pl);
+	return s7_make_integer(s, l->gx);
+}
+
+// 'LOW': low-level functions that may be inconvenient to use; you may prefer to use the higher-level wrappers defined by the boot code
+// 'UNSAFE': unsafe functions that can create inconsistent state and whose use is prone to memory bugs
 void vs7_init(VV *vv) {
 #define FN(sn, cn, param) s7_define_typed_function(vv->s, sn, cn, param, param, false, H_ ## cn, Q_ ## cn)
+	FN("UNSAFE-create-cursor", create_cursor, 3);
 	FN("LOW-make-motion", make_motion, 1);
 	FN("LOW-make-mutation", make_mutation, 3);
 	FN("LOW-create-binding", create_binding, 3);
 	FN("LOW-text-remove", text_remove, 1);
 	FN("LOW-text-insert", text_insert, 2);
+	FN("cursor-at", cursor_at, 2);
 	FN("cursor-location", cursor_location, 0);
+
+	FN("cursor-y", cursor_y, 1);
+	FN("cursor-gx", cursor_gx, 1);
 
 	FN("iterate", iterate, 3);
 	FN("iterator-out", iterator_out, 1);
@@ -240,10 +285,13 @@ void vs7_init(VV *vv) {
 	FN("byte-count", byte_count, 1);
 	FN("grapheme-count", grapheme_count, 1);
 
-	//FN("character-at", character_at, 2);
-	//FN("codepoint-at", codepoint_at, 2);
 	s7_define_variable(vv->s, "___vv", s7_make_c_pointer(vv->s, vv)); //todo can we establish a side channel for this?
 
 	s7_add_to_load_path(vv->s, "s");
 	s7_load(vv->s, "boot.scm");
+}
+
+void vs7_deinit(VV *vv) {
+	s7_free(vv->s);
+	vv->s = NULL;
 }

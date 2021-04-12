@@ -97,6 +97,7 @@ void tb_insert(TextBuffer *buffer, usz ln, usz byte, const u1 *text, usz bytes, 
 void tb_remove(TextBuffer *buffer, usz ln, usz byte, usz bext, usz gext); // gext is trusted.  YOU BETTER GET IT RIGHT FUCKER
 void tb_insert_line(TextBuffer *buffer, usz ln);
 void tb_remove_line(TextBuffer *buffer, usz ln);
+Loc tb_cursor_at(const TextBuffer *buffer, usz ln, usz grapheme);
 TextBufferIter *tb_iter(TextBuffer *buffer, Loc cursor, TbiMode mode, bool forward, bool autosquish);
 void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *vsz); //vsz is visual size e.g. double-width, tab...
 bool tbi_out(const TextBufferIter *tbi);

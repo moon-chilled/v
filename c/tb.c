@@ -23,7 +23,6 @@ bool utf8_validate(const u1 *text, usz bytes) {
 	return true;
 }
 
-//todo figure out tabs
 static void measure(const u1 *text, usz bytes, usz *graphemes) {
 	*graphemes = 0;
 	for (const u1 *end = text + bytes; text < end;) {
@@ -32,7 +31,7 @@ static void measure(const u1 *text, usz bytes, usz *graphemes) {
 		text += adv;
 	}
 }
-/*
+
 static void count(const u1 *text, usz graphemes, usz *bytes) {
 	*bytes = 0;
 	for (usz i = 0; i < graphemes; i++) {
@@ -41,7 +40,6 @@ static void count(const u1 *text, usz graphemes, usz *bytes) {
 		*bytes += adv;
 	}
 }
-*/
 
 void tb_insert(TextBuffer *tb, usz ln, usz byte, const u1 *text, usz bytes, usz *gadv) {
 	assert (ln < tb->l);
@@ -76,6 +74,12 @@ void tb_remove_line(TextBuffer *tb, usz ln) {
 	assert (ln < tb->l);
 	memmove(tb->lines + ln, tb->lines + ln + 1, (tb->l - ln - 1) * sizeof(*tb->lines));
 	tb->lines = GC_realloc(tb->lines, --tb->l * sizeof(*tb->lines));
+}
+
+Loc tb_cursor_at(const TextBuffer *t, usz ln, usz grapheme) {
+	Loc ret = {.y=ln, .gx=grapheme};
+	count(t->lines[ln].chars, grapheme, &ret.bx);
+	return ret;
 }
 
 struct TextBufferIter {

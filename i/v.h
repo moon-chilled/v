@@ -64,6 +64,7 @@ struct VV {
 };
 
 void vs7_init(VV *vv);
+void vs7_deinit(VV *vv);
 void msg(V *v, const char *fmt, ...);
 
 void v_push(V *v, Function *f);

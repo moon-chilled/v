@@ -305,4 +305,5 @@ int main(void) {
 	tickit_window_close(rt);
 	tickit_unref(t);
 
+	vs7_deinit(&vv);
 }

@@ -58,7 +58,7 @@ HOF(delete, ModeDefault, TypeMutation, TypeMotion, deleter);
 #define MUT(name) EMUT(name, prepare_ ## name, perform_ ## name, undo_ ## name)
 
 static void prepare_stash_col(const V *v, void **state) {
-	*state = cnew(v->b.loc.col);
+	*state = Cnew(Col, v->b.loc.col);
 }
 static void perform_ins_nl(V *v, const void *state) {
         tb_insert_line(&v->b.tb, ++v->b.loc.y);

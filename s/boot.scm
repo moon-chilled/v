@@ -1,5 +1,8 @@
 ;(set! (*s7* 'safety) 2)
 
+;(set-current-error-port *stdout*)
+;(set-current-output-port (open-output-file "s7o.log"))
+
 (load "prelude.scm")
 
 (define *motions* (inlet))
@@ -23,16 +26,23 @@
                  (iterator-loc it)))
 
 (define-motion cdown
-               (let ((y (if (>= (1+ y) (line-count)) y (1+ y))))
-                 (cons y (min x (character-count y)))))
+               (let* ((c (cursor-location))
+                      (y (1+ (cursor-y c))))
+                 (if (>= y (line-count))
+                   c
+                   (cursor-at y (min (cursor-gx c) (grapheme-count y))))))
 (define-motion cup
-               (let ((y (if (> y 0) (1- y) y)))
-                 (cons y (min x (character-count y)))))
-(define-motion eol (cons y (character-count y)))
-(define-motion bol (cons y 0))
-(define-motion bof '(0 . 0))
-(define-motion eof (let ((l (1- (line-count))))
-                         (cons l (character-count l))))
+               (let* ((c (cursor-location))
+                      (y (1- (cursor-y c))))
+                 (if (< y 0)
+                   c
+                   (cursor-at y (min (cursor-gx c) (grapheme-count y))))))
+(define-motion eol (let ((y (cursor-y (cursor-location)))
+                         (UNSAFE-create-cursor y (grapheme-count y) (byte-count y)))))
+(define-motion bol (UNSAFE-create-cursor (cursor-y (cursor-location)) 0 0))
+(define-motion bof (UNSAFE-create-cursor 0 0 0))
+(define-motion eof (let ((y (1- (line-count))))
+                     (UNSAFE-create-cursor y (grapheme-count y) (byte-count y))))
 (define-motion word-forward
                (loop while (and (< x (character-count y)) (not (isspace (character-at y x))))
                      do (incf x))
