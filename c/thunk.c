@@ -67,8 +67,8 @@ void *create_thunk(void *function_addr, u1 num_args, ...) {
 		u1 arg = arg_offs[arg_num];
 		u8 ptr = va_arg(ap, u8);
 
-		*mptr++ = 0x48 + (arg >> 3);        // REX.W.  If bit 4 of the arg is set, then also REX.B
-		*mptr++ = 0270 + (arg & 07);        // mov r64, qword
+		*mptr++ = 0x48 | (arg >> 3);        // REX.W.  If bit 4 of the arg is set, then also REX.B
+		*mptr++ = 0270 | (arg & 07);        // mov r64, qword
 		memcpy(mptr, &ptr, 8); mptr += 8;   // (the qword in question)
 	}
 
