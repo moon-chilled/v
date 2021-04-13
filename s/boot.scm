@@ -43,18 +43,23 @@
 (define-motion bof (UNSAFE-create-cursor 0 0 0))
 (define-motion eof (let ((y (1- (line-count))))
                      (UNSAFE-create-cursor y (grapheme-count y) (byte-count y))))
+; vvv this can be prettier with some nice macros
 (define-motion word-forward
-               (loop while (and (< x (character-count y)) (not (isspace (character-at y x))))
-                     do (incf x))
-               (loop while (and (< x (character-count y) )(isspace (character-at y x)))
-                     do (incf x))
-               (cons y x))
+               (let ((it (iterate 'stop-before-newline #t #f)))
+                 (loop until (or (iterator-out it) (isspace (iterator-read it #t))))
+                 (loop until (or (iterator-out it) (not (isspace (iterator-read it #f))))
+                       do (iterator-read it #t))
+                 (iterator-loc it)))
+; vvv this can be _much_ prettier with some nice macros
 (define-motion word-back
-               (loop while (and (> x 0) (isspace (character-at y (1- x))))
-                     do (decf x))
-               (loop while (and (> x 0) (not (isspace (character-at y (1- x)))))
-                     do (decf x))
-               (cons y x))
+               (let* ((it (iterate 'stop-after-newline #f #f))
+                      (old-loc (iterator-loc it)))
+                 (unless (iterator-out it) (iterator-read it #t))
+                 (loop until (or (iterator-out it) (not (isspace (iterator-read it #f))))
+                       do (set! old-loc (iterator-loc it)) (iterator-read it #t))
+                 (loop until (or (iterator-out it) (isspace (iterator-read it #f)))
+                       do (set! old-loc (iterator-loc it)) (iterator-read it #t))
+                 old-loc))
 
 (bind-motion cleft #\h)
 (bind-motion cdown #\j)

@@ -105,6 +105,7 @@ TextBufferIter *tb_iter(TextBuffer *tb, Loc cursor, TbiMode mode, bool forward, 
 
 void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *vsz) {
 	assert(!tbi->out);
+	bool nout = false;
 	Loc nc = tbi->cursor;
 	*vsz = 1; //todo
 	if (tbi->forward) {
@@ -133,7 +134,7 @@ void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *
 		} else {
 			nc.bx += tbi->mode == TbiMode_StopBeforeNl ? u8_advance(tbi->tb->lines[nc.y].chars[nc.bx]) : 1;
 			nc.gx++;
-			tbi->out = true;
+			nout = true;
 		}
 	} else {
 		if (nc.bx >= tbi->tb->lines[nc.y].bsz) {
@@ -155,12 +156,12 @@ void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *
 				nc.bx = tbi->tb->lines[nc.y].bsz;
 				nc.gx = tbi->tb->lines[nc.y].gsz;
 			} else {
-				tbi->out = true;
+				nout = true;
 			}
 		}
 	}
 
-	if (advance) tbi->cursor = nc;
+	if (advance) { tbi->cursor = nc; tbi->out = nout; }
 }
 Loc tbi_cursor(const TextBufferIter *tbi) { return tbi->cursor; }
 bool tbi_out(const TextBufferIter *tbi) { return tbi->out; }
