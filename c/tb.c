@@ -99,6 +99,18 @@ TextBufferIter *tb_iter(TextBuffer *tb, Loc cursor, TbiMode mode, bool forward, 
 		} else {
 			ret->out = true;
 		}
+	} else if (!cursor.bx && !forward) {
+		if (mode != TbiMode_EatEverything) {
+			while (cursor.y && !tb->lines[cursor.y-1].bsz) cursor.y--;
+			if (cursor.y) {
+				ret->out = true;
+			} else {
+				cursor.bx = 0;
+				cursor.gx = 0;
+			}
+		} else {
+			ret->out = true;
+		}
 	}
 	return ret;
 }
@@ -137,27 +149,23 @@ void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *
 			nout = true;
 		}
 	} else {
-		if (nc.bx >= tbi->tb->lines[nc.y].bsz) {
+		if (!nc.bx) {
 			assert (tbi->mode != TbiMode_StopBeforeNl);
 			*dst = Cnew(u1, '\n');
 			*bsz = 1;
-
-		} else {
-			*dst = tbi->tb->lines[nc.y].chars + nc.bx;
-			*bsz = u8_advance(tbi->tb->lines[nc.y].chars[nc.bx]);
-		}
-
-		if (nc.bx) {
-			nc.gx--;
-			while (!u8_advance(tbi->tb->lines[nc.y].chars[--nc.bx]));
-		} else {
-			if (tbi->mode == TbiMode_EatEverything) {
+			if (nc.y && tbi->mode == TbiMode_EatEverything) {
 				nc.y--;
 				nc.bx = tbi->tb->lines[nc.y].bsz;
 				nc.gx = tbi->tb->lines[nc.y].gsz;
 			} else {
 				nout = true;
 			}
+		} else {
+			*bsz = 0;
+			for (++*bsz; !u8_advance(tbi->tb->lines[nc.y].chars[--nc.bx]); ++*bsz);
+			nc.gx--;
+			if (!nc.bx) nout = true;
+			*dst = tbi->tb->lines[nc.y].chars + nc.bx;
 		}
 	}
 

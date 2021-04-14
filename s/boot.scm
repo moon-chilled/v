@@ -52,14 +52,11 @@
                  (iterator-loc it)))
 ; vvv this can be _much_ prettier with some nice macros
 (define-motion word-back
-               (let* ((it (iterate 'stop-after-newline #f #f))
-                      (old-loc (iterator-loc it)))
-                 (unless (iterator-out it) (iterator-read it #t))
-                 (loop until (or (iterator-out it) (not (isspace (iterator-read it #f))))
-                       do (set! old-loc (iterator-loc it)) (iterator-read it #t))
+               (let* ((it (iterate 'stop-after-newline #f #f)))
+                 (loop until (or (iterator-out it) (not (isspace (iterator-read it #t)))))
                  (loop until (or (iterator-out it) (isspace (iterator-read it #f)))
-                       do (set! old-loc (iterator-loc it)) (iterator-read it #t))
-                 old-loc))
+                       do (iterator-read it #t))
+                 (iterator-loc it)))
 
 (bind-motion cleft #\h)
 (bind-motion cdown #\j)
