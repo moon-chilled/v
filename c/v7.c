@@ -16,15 +16,15 @@ static Loc motion_perform(const V *v, const void *state) {
 	return *ret;
 }
 
-static void mutation_prepare(const V *v, void **state) {
+static void s7_mutation_prepare(const V *v, void **state) {
 	struct s7_mutation *m = *state;
 	s7_call(v->vv->s, m->prepare, s7_nil(v->vv->s));
 }
-static void mutation_perform(V *v, const void *state) {
+static void s7_mutation_perform(V *v, const void *state) {
 	const struct s7_mutation *m = state;
 	s7_call(v->vv->s, m->perform, s7_nil(v->vv->s));
 }
-static void mutation_undo(V *v, const void *state) {
+static void s7_mutation_undo(V *v, const void *state) {
 	const struct s7_mutation *m = state;
 	s7_call(v->vv->s, m->undo, s7_nil(v->vv->s));
 }
@@ -65,7 +65,7 @@ static s7_pointer make_mutation(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 	PPOP(perform, "LOW-make-motion");
 	PPOP(undo, "LOW-make-motion");
 
-	Function r = new_mutation(onew(struct s7_mutation, .prepare=prepare, .perform=perform, .undo=undo), mutation_prepare, mutation_perform, mutation_undo);
+	Function r = new_mutation(onew(struct s7_mutation, .prepare=prepare, .perform=perform, .undo=undo), s7_mutation_prepare, s7_mutation_perform, s7_mutation_undo);
 	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_mutation, s7_nil(s));
 }
 

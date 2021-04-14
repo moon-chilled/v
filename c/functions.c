@@ -136,6 +136,22 @@ EMUT(insert, prepare_modeswitch, perform_insert, undo_modeswitch);
 static void perform_normal(V *v, const void *state) { v->mode = ModeNormal; }
 EMUT(normal, prepare_modeswitch, perform_normal, undo_modeswitch);
 
+static void prepare_undo(const V *v, void **state) {
+	*state = cnew((AppliedFunction)v->most_recent);
+}
+static void perform_undo(V *v, const void *state) {
+	AppliedFunction f = *(AppliedFunction*)state;
+
+	unapply_transformation(v, f);
+}
+// ;o
+static void undo_undo(V *v, const void *state) {
+	AppliedFunction f = *(AppliedFunction*)state;
+
+	apply_transformation(v, &f.f);
+}
+MUT(undo);
+
 #if 0
 struct if_state { Mode old_mode; usz old_x; };
 static void prepare_if_state(const V *v, void **state) {

@@ -267,8 +267,8 @@ void init_vv(VV *vv) {
 	//vv->km_insert.special[SpecialKeyDelete] = cnew(mutation_delforward);
 	vv->km_insert.special[SpecialKeyEscape] = cnew(mutation_normal);
 
-	//vv->km_mutate.ascii['x'] = cnew(mutation_delforward);
 	vv->km_mutate.ascii['i'] = cnew(mutation_insert);
+	vv->km_mutate.ascii['u'] = cnew(mutation_undo);
 	//vv->km_mutate.ascii['o'] = cnew(mutation_add_nl);
 	//vv->km_mutate.ascii['O'] = cnew(mutation_prep_nl);
 	//vv->km_mutate.ascii['I'] = cnew(mutation_insert_front);
@@ -284,6 +284,7 @@ void init_vv(VV *vv) {
 }
 
 int main(void) {
+	GC_disable();
 	VV vv;
 	init_vv(&vv);
 

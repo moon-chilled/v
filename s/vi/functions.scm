@@ -46,10 +46,10 @@
                             (cons (if (not (iterator-out it)) (iterator-read it #t) "")
                                   (iterator-loc it)))))
                  (lambda () (LOW-text-remove (cdr ch-loc)))
-                 (lambda () (LOW-text-insert (cdr ch-loc) (car ch-loc))))
+                 (lambda () (LOW-text-insert (cursor-location) (car ch-loc))))
 (define-mutation delforward
                  ((ch-loc (let ((it (iterate 'stop-before-newline #t #f)))
                             (cons (if (not (iterator-out it)) (iterator-read it #t) "")
                                   (iterator-loc it)))))
                  (lambda () (LOW-text-remove (cdr ch-loc)))
-                 (lambda () (LOW-text-insert (cdr ch-loc) (car ch-loc))))
+                 (lambda () (LOW-text-insert (cursor-location) (car ch-loc))))

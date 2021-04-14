@@ -47,6 +47,7 @@ struct Function {
 		} function;
 	};
 };
+typedef struct { Loc floc; Loc cloc; Function f; } AppliedFunction;
 
 static inline Function new_str(const u1 *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
 static inline Function new_char(u1 c) { return (Function){.type={TypeChar}, .character=c}; }
@@ -70,9 +71,11 @@ static inline Function new_function(void *state, Mode mode, TypeType ret, TypeTy
 extern Function mutation_ins_nl, mutation_prep_nl, mutation_add_nl, mutation_delback, mutation_delforward;
 extern Function mutation_insert, mutation_normal;
 extern Function mutation_insert_front, mutation_insert_back;
+extern Function mutation_undo;
 extern Function hof_delete;
 extern Function hof_move_until;
 
-void apply_transformation(V *b, Function *f);
+AppliedFunction apply_transformation(V *b, Function *f);
+void unapply_transformation(V *b, AppliedFunction f);
 
 #endif //CV_FUNCTIONS_H

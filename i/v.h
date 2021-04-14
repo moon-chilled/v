@@ -44,6 +44,7 @@ struct V {
 	TickitWindow *message_window, *mode_window, *text_window;
 	Buffer b;
 	Mode mode;
+	AppliedFunction most_recent;
 
 	struct {
 		Function f;

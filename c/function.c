@@ -1,6 +1,7 @@
 #include "v.h"
 
-void apply_transformation(V *v, Function *f) {
+AppliedFunction apply_transformation(V *v, Function *f) {
+	AppliedFunction ret = {.floc = v->b.loc};
 	switch (f->type.type) {
 		case TypeStr: b_insert(&v->b, f->str.s, f->str.l); break;
 		case TypeChar: b_insert(&v->b, &f->character, 1); break;
@@ -9,4 +10,19 @@ void apply_transformation(V *v, Function *f) {
 		case TypeFunction: assert(0); break;
 		default: assert(0);
 	}
+	ret.f = *f;
+	ret.cloc = v->b.loc;
+	return ret;
+}
+void unapply_transformation(V *v, AppliedFunction f) {
+	switch (f.f.type.type) {
+		case TypeStr:
+		case TypeChar:
+			v->b.loc = f.floc; b_remove(&v->b, f.cloc.col); break;
+		case TypeMotion: break;
+		case TypeMutation: f.f.mutation.undo(v, f.f.mutation.state); break;
+		case TypeFunction: assert(0); break;
+		default: assert(0);
+	}
+	v->b.loc = f.floc;
 }

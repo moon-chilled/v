@@ -47,7 +47,7 @@ bool v_reduce(V *v) {
 		if (v->sp && v->stack[v->sp-1].f.type.type != TypeFunction) {
 			ret = true;
 
-			apply_transformation(v, &v->stack[--v->sp].f);
+			v->most_recent = apply_transformation(v, &v->stack[--v->sp].f);
 			continue;
 		}
 
