@@ -66,7 +66,7 @@ void tb_remove(TextBuffer *tb, usz ln, usz byte, usz bext, usz gext) {
 void tb_insert_line(TextBuffer *tb, usz ln) {
 	assert (ln <= tb->l);
 	tb->lines = GC_realloc(tb->lines, ++tb->l * sizeof(*tb->lines));
-	memmove(tb->lines + ln + 1, tb->lines + ln, (tb->l - ln) * sizeof(*tb->lines));
+	memmove(tb->lines + ln + 1, tb->lines + ln, (tb->l - ln - 1) * sizeof(*tb->lines));
 	memset(&tb->lines[ln], 0, sizeof(tb->lines[ln]));
 }
 
