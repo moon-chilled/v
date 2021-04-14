@@ -29,9 +29,10 @@ static void mutation_undo(V *v, const void *state) {
 	s7_call(v->vv->s, m->undo, s7_nil(v->vv->s));
 }
 
-#define PRELUDE int __attribute__((unused)) _argument_number = 1;
+#define PRELUDE s7_pointer __attribute__((unused)) _original_args = args; int __attribute__((unused)) _argument_number = 1;
 #define PPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t)
 #define PSPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s, s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t)
+#define GPOP(x, fn) if (!s7_is_pair(args)) return s7_wrong_number_of_args_error(s, fn, _original_args); s7_pointer x = s7_car(args); args = s7_cdr(args); _argument_number++
 #define POP(x, fn, t_, t) PPRELUDE(fn, t_, t); s7_pointer x = s7_car(args); args = s7_cdr(args); _argument_number++
 #define TPOP(T, x, get, fn, t_, t) PPRELUDE(fn, t_, t); T x = get(s7_car(args)); args = s7_cdr(args); _argument_number++
 #define CPPOP(T, x, fn, tag) PPRELUDE(fn, s7_is_c_object, "c object"); T *x = s7_c_object_value_checked(s7_car(args), tag); if (!(x)) { char buf[128]; sprintf(buf, "c object of type '%lli'", (long long)(tag)); } args = s7_cdr(args); _argument_number++
@@ -70,15 +71,18 @@ static s7_pointer make_mutation(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 
 // symbol (mode) -> character -> cpointer -> nil
 static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
-#define H_create_binding "(LOW-create-binding mode character pointer) establishes a mapping in mode from character to the function indicated by pointer"
-#define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, vv->sym_character_p, vv->sym_c_pointer_p)
+#define H_create_binding "(LOW-create-binding mode character-or-special pointer) establishes a mapping in mode from character to the function indicated by pointer"
+#define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, s7_make_signature(vv->s, 2, vv->sym_character_p, vv->sym_symbol_p), vv->sym_c_pointer_p)
 	POP(mode, "LOW-create-binding", s7_is_symbol, "symbol");
 
-	CPOP(ch, "LOW-create-binding");
+	GPOP(ch_or_sp, "LOW-create-binding");
+	if (!s7_is_character(ch_or_sp) && !s7_is_symbol(ch_or_sp)) {
+		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number-1, ch_or_sp, "a character or a symbol");
+	}
 
 	POP(bj, "LOW-create-binding", s7_is_c_pointer, "c pointer");
 	if (!(s7_is_c_pointer_of_type(bj, vv->sym_function_function) || s7_is_c_pointer_of_type(bj, vv->sym_function_mutation) || s7_is_c_pointer_of_type(bj, vv->sym_function_motion))) {
-		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number, bj, "a c pointer with type function-function, function-transformation, or function-motion");
+		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number-1, bj, "a c pointer with type function-function, function-transformation, or function-motion");
 	}
 	Function *f = s7_c_pointer(bj);
 
@@ -90,7 +94,19 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 
 	if (!km) return s7_wrong_type_arg_error(s, "LOW-create-binding", 1, mode, "a symbol: one of insert, motion, transform, or function)");
 
-	km->ascii[ch] = cnew(*f);
+	Function **tgt = NULL;
+	if (s7_is_character(ch_or_sp)) tgt = km->ascii + s7_character(ch_or_sp);
+	else if (s7_is_eq(ch_or_sp, vv->sym_left)) tgt = km->special + SpecialKeyLeft;
+	else if (s7_is_eq(ch_or_sp, vv->sym_right)) tgt = km->special + SpecialKeyRight;
+	else if (s7_is_eq(ch_or_sp, vv->sym_up)) tgt = km->special + SpecialKeyUp;
+	else if (s7_is_eq(ch_or_sp, vv->sym_down)) tgt = km->special + SpecialKeyDown;
+	else if (s7_is_eq(ch_or_sp, vv->sym_enter)) tgt = km->special + SpecialKeyEnter;
+	else if (s7_is_eq(ch_or_sp, vv->sym_backspace)) tgt = km->special + SpecialKeyBackspace;
+	else if (s7_is_eq(ch_or_sp, vv->sym_delete)) tgt = km->special + SpecialKeyDelete;
+	else if (s7_is_eq(ch_or_sp, vv->sym_escape)) tgt = km->special + SpecialKeyEscape;
+
+	if (!tgt) return s7_wrong_type_arg_error(s, "LOW-create-binding", 2, ch_or_sp, "a character or a symbol in (left right up down enter backspace delete escape)");
+	*tgt = cnew(*f);
 
 	return s7_f(s);
 }
@@ -126,7 +142,7 @@ static s7_pointer grapheme_count(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 static s7_pointer text_remove(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_text_remove "(LOW-text-remove target) removes characters between the current cursor position and the x position indicated by the target"
 #define Q_text_remove s7_make_signature(vv->s, 2, vv->sym_not, vv->sym_c_pointer_p)
-	CPPOP(Loc, l, "LOW-create-binding", vv->tag_loc);
+	CPPOP(Loc, l, "LOW-text-remove", vv->tag_loc);
 	b_remove(&vv->v->b, l->col);
 	return s7_f(s);
 }
@@ -252,7 +268,7 @@ void vs7_init(VV *vv) {
 	s7_define_variable(vv->s, "___vv", s7_make_c_pointer(vv->s, vv)); //todo can we establish a side channel for this?
 
 	s7_add_to_load_path(vv->s, "s");
-	s7_load(vv->s, "boot.scm");
+	s7_load(vv->s, "prelude/boot.scm");
 }
 
 void vs7_deinit(VV *vv) {

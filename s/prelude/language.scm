@@ -1,4 +1,5 @@
-(define loop (let () (load "loop.scm" (curlet)) loop))
+; basic language augmentations
+; (sorry guy steele)
 
 ; cl, my maven!
 ; perhaps I'll ?-p and !f too, but later
@@ -108,4 +109,4 @@
                            (integer->char (+ b3 #b10000000)))))
     (#t (error 'utf8-error "codepoint out of range (must be <2²¹"))))
 
-(load "test.scm")
+;(load "test.scm")

@@ -3,3 +3,5 @@ Somewhat different structure (two levels of btree; one for lines, one for conten
 Particularly parser/syntax highlight stuff.
 
 Read yi paper https://publications.lib.chalmers.se/records/fulltext/local_94979.pdf
+
+modules for scm (so dependencies can be expressed less haphazardly)

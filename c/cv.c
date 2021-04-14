@@ -236,6 +236,14 @@ void init_vv(VV *vv) {
 	SYM(eat_everything, "eat-everything");
 	SSYM(y);
 	SSYM(gx);
+	SSYM(left);
+	SSYM(right);
+	SSYM(up);
+	SSYM(down);
+	SSYM(enter);
+	SSYM(backspace);
+	SSYM(delete);
+	SSYM(escape);
 	PSYM(procedure);
 	PSYM(character);
 	SYM(c_pointer_p, "c-pointer?");
