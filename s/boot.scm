@@ -50,7 +50,6 @@
                  (loop until (or (iterator-out it) (not (isspace (iterator-read it #f))))
                        do (iterator-read it #t))
                  (iterator-loc it)))
-; vvv this can be _much_ prettier with some nice macros
 (define-motion word-back
                (let* ((it (iterate 'stop-after-newline #f #f)))
                  (loop until (or (iterator-out it) (not (isspace (iterator-read it #t)))))
@@ -71,38 +70,26 @@
 
 
 (defmacro define-mutation (name bindings perform undo)
-  `(let ,(map (lambda (x) (list (car x) #<undefined>)) bindings) #L`(,(car $) #<undefined>)
-     (with-let *mutations*
-               (define ,name (list
-                               ; prepare
-                               (lambda () ,(map (lambda (x) `(set! ,@x)) bindings)) ; ,(map #L`(set! ,@$))
-                               ,perform
-                               ,undo)))))
+  `(with-let *mutations*
+             (define ,name
+               (let ,(map (lambda (x) (list (car x) #<undefined>)) bindings) ;#L`(,(car $) #<undefined>)
+                 (list
+                   (lambda () ,@(map #L`(set! ,@$) bindings)) ;prepare
+                   ,perform
+                   ,undo)))))
 (defmacro bind-mutation (mutation key)
               `(LOW-create-binding 'mutation ,key (apply LOW-make-mutation (*mutations* ',mutation))))
-
+(define-mutation delbackward
+                 ((ch-loc (let ((it (iterate 'stop-after-newline #f #f)))
+                            (cons (if (not (iterator-out it)) (iterator-read it #t) "")
+                                  (iterator-loc it)))))
+                 (lambda () (LOW-text-remove (cdr ch-loc)))
+                 (lambda () (LOW-text-insert (cdr ch-loc) (car ch-loc))))
 (define-mutation delforward
-                 ()
-                 (lambda () (LOW-text-remove (car (cursor-location)) (cdr (cursor-location)) 1))
-                 (lambda () #f)) ;todo
+                 ((ch-loc (let ((it (iterate 'stop-before-newline #t #f)))
+                            (cons (if (not (iterator-out it)) (iterator-read it #t) "")
+                                  (iterator-loc it)))))
+                 (lambda () (LOW-text-remove (cdr ch-loc)))
+                 (lambda () (LOW-text-insert (cdr ch-loc) (car ch-loc))))
 (bind-mutation delforward #\x)
-;
-;
-;
-;(lambda ()
-;  (let ((x (cdr (cursor-location))))
-;    (values
-;      (lambda () (... x))
-;      (lambda () (... x)))))
-;
-;(define-mutation
-;  ((x (cdr cursor-location))
-;   (... ...))
-;  (lambda () (... x))
-;  (lambda () (... x)))
-;
-;(let ((x #<undefined>))
-;  (values
-;    (lambda () (set! x (cdr cursor-location)))
-;    (lambda () (... x))
-;    (lambda () (... x))))
+(bind-mutation delbackward #\X)
