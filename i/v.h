@@ -56,11 +56,11 @@ struct VV {
 	V *v; //todo multiple
 	s7_scheme *s;
 	s7_pointer sym_v, sym_text_buffer_iter, sym_function_function, sym_function_mutation, sym_function_motion;
-	s7_pointer sym_default, sym_insert, sym_motion, sym_mutation, sym_function;
+	s7_pointer sym_default, sym_insert, sym_bottom, sym_str, sym_motion, sym_mutation, sym_function, sym_top;
 	s7_pointer sym_stop_before_nl, sym_stop_after_nl, sym_eat_everything;
 	s7_pointer sym_y, sym_gx;
 	s7_pointer sym_left, sym_right, sym_up, sym_down, sym_enter, sym_backspace, sym_delete, sym_escape;
-	s7_pointer sym_procedure_p, sym_character_p, sym_c_pointer_p, sym_symbol_p, sym_not, sym_pair_p, sym_integer_p, sym_string_p, sym_boolean_p;
+	s7_pointer sym_procedure_p, sym_character_p, sym_c_pointer_p, sym_symbol_p, sym_not, sym_pair_p, sym_list_p, sym_integer_p, sym_string_p, sym_boolean_p;
 
 	s7_int tag_loc;
 

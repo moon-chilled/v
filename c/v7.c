@@ -1,5 +1,23 @@
 #include "v.h"
 
+static s7_pointer s7_make_v_function(VV *vv, Function f) {
+	switch (f.type.type) {
+		case TypeStr: return s7_make_string_with_length(vv->s, (const char*)f.str.s, f.str.l);
+		case TypeMotion: return s7_make_c_pointer_with_type(vv->s, cnew(f), vv->sym_function_motion, s7_nil(vv->s));
+		case TypeMutation: return s7_make_c_pointer_with_type(vv->s, cnew(f), vv->sym_function_mutation, s7_nil(vv->s));
+		case TypeFunction: return s7_make_c_pointer_with_type(vv->s, cnew(f), vv->sym_function_function, s7_nil(vv->s));
+		default: assert(0);
+	}
+}
+
+static Function *s7_to_v_function(VV *vv, s7_pointer p) {
+	if (!(s7_is_c_pointer_of_type(p, vv->sym_function_function) || s7_is_c_pointer_of_type(p, vv->sym_function_mutation) || s7_is_c_pointer_of_type(p, vv->sym_function_motion))) {
+		return NULL;
+	} else {
+		return s7_c_pointer(p);
+	}
+}
+
 struct s7_mutation { s7_pointer prepare, perform, undo; };
 
 static Loc motion_perform(const V *v, const void *state) {
@@ -29,6 +47,41 @@ static void s7_mutation_undo(V *v, const void *state) {
 	s7_call(v->vv->s, m->undo, s7_nil(v->vv->s));
 }
 
+static Function s7_function_transform(const V *v, void *state, const Function *other) {
+	Function *ret = s7_to_v_function(v->vv, s7_call(v->vv->s, state, s7_list(v->vv->s, 1, s7_make_v_function(v->vv, *other))));
+	if (!ret) {
+		msg((V*)v, "scheme error: function did not return a function");
+		assert(0);
+		return new_str(NULL, 0);
+	}
+	return *ret;
+}
+
+static bool s7_signature_to_type(VV *vv, s7_pointer signature, Type *out) {
+	if (s7_is_pair(signature)) {
+		if (s7_is_null(vv->s, s7_cdr(signature))) {
+			signature = s7_car(signature);
+			goto solo;
+		}
+		out->type = TypeFunction;
+		out->fn = new(Type, 2);
+		if (!s7_signature_to_type(vv, s7_car(signature), out->fn + 0)) return false;
+		if (!s7_signature_to_type(vv, s7_cdr(signature), out->fn + 1)) return false;
+		return true;
+	} else if (s7_is_symbol(signature)) {
+solo:
+		if (s7_is_eq(signature, vv->sym_bottom)) out->type = TypeBottom;
+		else if (s7_is_eq(signature, vv->sym_str)) out->type = TypeStr;
+		else if (s7_is_eq(signature, vv->sym_motion)) out->type = TypeMotion;
+		else if (s7_is_eq(signature, vv->sym_mutation)) out->type = TypeMutation;
+		else if (s7_is_eq(signature, vv->sym_function)) out->type = TypeFunction;
+		else if (s7_is_eq(signature, vv->sym_top)) out->type = TypeTop;
+		else return false;
+		return true;
+	}
+	return false;
+}
+
 #define PRELUDE s7_pointer __attribute__((unused)) _original_args = args; int __attribute__((unused)) _argument_number = 1;
 #define PPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t)
 #define PSPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s, s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t)
@@ -46,6 +99,37 @@ static void s7_mutation_undo(V *v, const void *state) {
 #define BPOP(x, fn) STPOP(bool, x, s7_boolean, fn, s7_is_boolean, "boolean")
 
 //todo check aritability of functions
+
+// type -> function -> cpointer
+static s7_pointer make_higher_order_function(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
+#define H_make_higher_order_function "(LOW-make-higher-order-function mode signature fn) makes a higher-order function out of fn with signature signature"
+#define Q_make_higher_order_function s7_make_signature(vv->s, 3, vv->sym_c_pointer_p, vv->sym_list_p, vv->sym_procedure_p)
+	Mode mode;
+	POP(smode, "LOW-make-higher-order-function", s7_is_symbol, "symbol");
+	if (s7_is_eq(smode, vv->sym_insert)) mode = ModeInsert;
+	else if (s7_is_eq(smode, vv->sym_motion)) mode = ModeMotion;
+	else if (s7_is_eq(smode, vv->sym_mutation)) mode = ModeMutate;
+	else if (s7_is_eq(smode, vv->sym_function)) mode = ModeFunction;
+	else {
+		return s7_wrong_type_arg_error(s, "LOW-make-higher-order-function", 1, smode, "a symbol: one of insert, motion, transform, or function)");
+	}
+
+	Type type;
+	POP(sig, "LOW-make-higher-order-function", s7_is_pair, "pair");
+	if (!s7_signature_to_type(vv, s7_reverse(s, sig), &type)) {
+		return s7_wrong_type_arg_error(s, "LOW-make-higher-order-function", 2, sig, "a signature");
+	}
+	PPOP(f, "LOW-make-higher-order-function");
+	Function r = (Function){
+		.type = type,
+		.function = {
+			.state = f,
+			.mode = mode,
+			.transform = s7_function_transform,
+		},
+	};
+	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_function, s7_nil(s));
+}
 
 // function -> cpointer
 static s7_pointer make_motion(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
@@ -81,10 +165,10 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 	}
 
 	POP(bj, "LOW-create-binding", s7_is_c_pointer, "c pointer");
-	if (!(s7_is_c_pointer_of_type(bj, vv->sym_function_function) || s7_is_c_pointer_of_type(bj, vv->sym_function_mutation) || s7_is_c_pointer_of_type(bj, vv->sym_function_motion))) {
+	Function *f = s7_to_v_function(vv, bj);
+	if (!f) {
 		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number-1, bj, "a c pointer with type function-function, function-transformation, or function-motion");
 	}
-	Function *f = s7_c_pointer(bj);
 
 	Keymap *km = NULL;
 	if (s7_is_eq(mode, vv->sym_insert)) km = &vv->km_insert;
@@ -246,6 +330,7 @@ void vs7_init(VV *vv) {
 #define FN(sn, cn, param) s7_define_typed_function(vv->s, sn, cn, param, param, false, H_ ## cn, Q_ ## cn)
 #define VVTFN(sn, cn, param) s7_define_typed_function(vv->s, sn, create_thunk(_v_thunk_typechecker=cn, 1, 2, vv), param, param, false, H_ ## cn, Q_ ## cn)
 	VVTFN("UNSAFE-create-cursor", create_cursor, 3);
+	VVTFN("LOW-make-higher-order-function", make_higher_order_function, 3);
 	VVTFN("LOW-make-motion", make_motion, 1);
 	VVTFN("LOW-make-mutation", make_mutation, 3);
 	VVTFN("LOW-create-binding", create_binding, 3);

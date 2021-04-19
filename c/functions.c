@@ -1,6 +1,5 @@
 #include "v.h"
 
-#if 0
 static void perform_delete(V *v, const void *state) {
 	const Loc *dst = state;
 #if 0
@@ -32,27 +31,9 @@ static Function deleter(const V *v, void *state, const Function *other) {
 	//todo pass other into prep
 }
 
-static Loc move_until(const V *v, const void *s) {
-	Loc r = v->b.loc;
-	glyph g = (glyph)(usz)s;
-	usz x = r.x;
-	while (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] != g) {
-		x++;
-	}
-
-	if (x+1 < v->b.tb.lines[r.y].l && v->b.tb.lines[r.y].glyphs[x+1] == g) r.x = x;
-	return r;
-}
-static Function mover_until(const V *v, void *state, const Function *other) {
-	assert (other->type.type == TypeChar);
-	return new_motion((void*)(usz)other->character, move_until);
-}
-
 #define HOF(n, nmode, ret, parm, fun) static Type cv__ ## n ## __type[2] = {{.type=parm}, {.type=ret}}; Function hof_ ## n = {.type={.type=TypeFunction, .fn=cv__ ## n ## __type}, .function={.mode=nmode, .transform=fun}}
-HOF(move_until, ModeInsert, TypeMotion, TypeChar, mover_until);
 HOF(delete, ModeDefault, TypeMutation, TypeMotion, deleter);
 #undef HOF
-#endif
 
 #define EMUT(name, fprepare, fperform, fundo) Function mutation_ ## name = {.type={TypeMutation}, .mutation={.prepare=fprepare, .perform=fperform, .undo=fundo}}
 #define MUT(name) EMUT(name, prepare_ ## name, perform_ ## name, undo_ ## name)

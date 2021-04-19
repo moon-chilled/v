@@ -4,7 +4,7 @@
 typedef enum {
 	TypeBottom,
 	TypeStr,          // () -> Str.             e.g. the parameter to '/'.  (And 'i', sort of.)
-	TypeChar,         // () -> Char.            e.g. the parameter to 'r' or 't'
+	//TypeChar,         // () -> Char.            e.g. the parameter to 'r' or 't'
 	TypeMotion,       // (TB,Loc) -> Loc.       e.g. 'w'
 	TypeMutation,     // (TB,Loc) -> (TB,Loc).  e.g. 'x'
 	TypeFunction,
@@ -29,7 +29,6 @@ struct Function {
 	//todo defer?
 	union {
 		struct { const u1 *s; usz l; } str;
-		u1 character;
 		struct {
 			const void *state;
 			Loc (*perform)(const V *v, const void *state);
@@ -50,7 +49,6 @@ struct Function {
 typedef struct { Loc floc; Loc cloc; Function f; } AppliedFunction;
 
 static inline Function new_str(const u1 *s, usz l) { return (Function){.type={TypeStr}, .str.s=s, .str.l=l}; }
-static inline Function new_char(u1 c) { return (Function){.type={TypeChar}, .character=c}; }
 static inline Function new_motion(const void *state, Loc (*perform)(const V*,const void*)) { return (Function){.type={TypeMotion}, .motion={.state=state, .perform=perform}}; }
 static inline Function new_mutation(void *state, void (*prepare)(const V*, void**), void (*perform)(V*,const void*), void (*undo)(V*,const void*)) { return (Function){.type={TypeMutation}, .mutation={.state=state, .prepare=prepare, .perform=perform, .undo=undo}}; }
 static inline Function new_function(void *state, Mode mode, TypeType ret, TypeType parameter, Function (*transform)(const V*,void*,const Function*)) {

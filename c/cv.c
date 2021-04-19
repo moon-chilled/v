@@ -228,9 +228,12 @@ void init_vv(VV *vv) {
 	SYM(function_motion, "function-motion");
 	SSYM(default);
 	SSYM(insert);
+	SSYM(bottom);
+	SSYM(str);
 	SSYM(motion);
 	SSYM(mutation);
 	SSYM(function);
+	SSYM(top);
 	SYM(stop_before_nl, "stop-before-newline");
 	SYM(stop_after_nl, "stop-after-newline");
 	SYM(eat_everything, "eat-everything");
@@ -250,6 +253,7 @@ void init_vv(VV *vv) {
 	PSYM(symbol);
 	SSYM(not);
 	PSYM(pair);
+	PSYM(list);
 	PSYM(integer);
 	PSYM(string);
 	PSYM(boolean);
@@ -276,7 +280,7 @@ void init_vv(VV *vv) {
 
 	//vv->km_motion.ascii['t'] = cnew(hof_move_until);
 
-	//vv->km_mutate.ascii['d'] = cnew(hof_delete);
+	vv->km_mutate.ascii['d'] = cnew(hof_delete);
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 
 	vs7_init(vv);
