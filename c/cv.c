@@ -12,7 +12,7 @@ usz utf8d1(u4 *o, const unsigned char *i) {
 	}
 
 	if (0xe0 <= *i) {
-		if (i[1] >> 6 !=2 || i[2] >> 6 != 2) return 0;
+		if (i[1] >> 6 != 2 || i[2] >> 6 != 2) return 0;
 		o[0] = i[0] & 15;
 		o[0] <<= 6; o[0] |= i[1] & 0x3f;
 		o[0] <<= 6; o[0] |= i[2] & 0x3f;
