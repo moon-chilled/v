@@ -51,7 +51,7 @@
                    (close-delimiter (let ((i (char-position open-delimiter openers)))
                                       (if i (string-ref closers i) open-delimiter)))
                    (depth 1))
-              (apply string (loop for c = (peek-char) then (peek-char)
+              (apply string (loop for c = (peek-char)
                                   do (apply case c
                                             `(((#<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
                                               ((,close-delimiter) (decf depth))
@@ -62,7 +62,7 @@
 ; #/foo/ too, just for nice
 ; maybe this should be a regex literal?
 (add-reader #\/
-            (apply string (loop for c = (peek-char) then (peek-char)
+            (apply string (loop for c = (peek-char)
                                 do (when (eq? c #<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
                                 until (char=? c #\/)
                                 collect (read-char)
