@@ -40,7 +40,6 @@
                  (iterator-loc it)))
 
 
-
 (define-mutation delbackward
                  ((ch-loc (let ((it (iterate 'stop-after-newline #f #f)))
                             (cons (if (not (iterator-out it)) (iterator-read it #t) "")
@@ -53,3 +52,20 @@
                                   (iterator-loc it)))))
                  (lambda () (LOW-text-remove (cdr ch-loc)))
                  (lambda () (LOW-text-insert (cursor-location) (car ch-loc))))
+
+
+(define-higher-order-function til
+                              (insert)
+                              (motion str)
+                              (text)
+                              (let ((it (iterate 'stop-before-newline #t #f)))
+                                (loop until (or (iterator-out it) (string=? text (iterator-read it #f)))
+                                      do (iterator-read it #t))
+                                (iterator-loc it)))
+(define-higher-order-function find
+                              (insert)
+                              (motion str)
+                              (text)
+                              (let ((it (iterate 'stop-before-newline #t #f)))
+                                (loop until (or (iterator-out it) (string=? text (iterator-read it #t))))
+                                (iterator-loc it)))
