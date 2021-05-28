@@ -25,7 +25,7 @@
 
 (defexpansion block (:rest body)
               `(call-with-exit (lambda (return) ,@body)))
-(defexpansion assert (c) `(unless ,c (error 'assertion-failure (format #f "unhandled assertion ~a" ',c))))
+(defexpansion assert (c) `(unless ,c (error 'assertion-failure "unhandled assertion ~a" ',c)))
 
 (defexpansion add-reader (character :rest body)
               (let ((str (gensym)))
@@ -51,16 +51,23 @@
                    (close-delimiter (let ((i (char-position open-delimiter openers)))
                                       (if i (string-ref closers i) open-delimiter)))
                    (depth 1))
-              (prog1
-                (apply string (loop for c = (peek-char) then (peek-char)
-                                    do (apply case c
-                                              `(((#<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
-                                                ((,close-delimiter) (decf depth))
-                                                ((,open-delimiter) (incf depth))))
-                                    while (> depth 0)
-                                    collect (read-char)))
-                ; read the close-delimiter
-                (read-char))))
+              (apply string (loop for c = (peek-char) then (peek-char)
+                                  do (apply case c
+                                            `(((#<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
+                                              ((,close-delimiter) (decf depth))
+                                              ((,open-delimiter) (incf depth))))
+                                  while (> depth 0)
+                                  collect (read-char)
+                                  finally (read-char)))))
+; #/foo/ too, just for nice
+; maybe this should be a regex literal?
+(add-reader #\/
+            (apply string (loop for c = (peek-char) then (peek-char)
+                                do (when (eq? c #<eof>) (error 'string-read-error "unexpected end of file in delimited string"))
+                                until (char=? c #\/)
+                                collect (read-char)
+                                finally (read-char))))
+
 (add-reader #\L `(lambda ($) ,(read)))
 ; #'x ←→ (char->integer #\x), but with utf8 decoding
 (add-reader #\'
@@ -88,7 +95,6 @@
     ((< c 128) (string (integer->char c)))
     ((< c 2048) (let ((b1 (logand c #b111111))
                       (b0 (ash c -6)))
-                  (format #t "~a / ~a / ~a~%" c b0 b1)
                   (string (integer->char (logior b0 #b11000000))
                           (integer->char (logior b1 #b10000000)))))
     ((< c 65536) (let ((b2 (logand c #b111111))
@@ -123,6 +129,3 @@
                      ((>= ,i ,m) (cdr ,r))
                      (set! (cdr ,rt) (cons (begin ,@body) ()))
                      (set! ,rt (cdr ,rt))))))
-
-
-;(load "test.scm")

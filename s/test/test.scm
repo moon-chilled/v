@@ -11,5 +11,5 @@
          (assert (= (car $) (cadr $)))
          (assert (string=? (utf8-encode (car $)) (caddr $))))
        unitab))
-(assert (equal? '(#q/ab\c/#q/r\/ #q{ab cd {de }f } #q//)
-                '(  "ab\\c" "r\\"  "ab cd {de }f "   "")))
+(assert (equal? '(#q/ab\c/#q/r\/ #q{ab cd {de }f } #q// #/bla\b/)
+                '(  "ab\\c" "r\\"  "ab cd {de }f "   "" "bla\\b")))
