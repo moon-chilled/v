@@ -22,3 +22,5 @@
 
 (bind-higher-order-function til #\t)
 (bind-higher-order-function find #\f)
+(bind-higher-order-function til-back #\T)
+(bind-higher-order-function find-back #\F)

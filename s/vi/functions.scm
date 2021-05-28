@@ -69,3 +69,19 @@
                               (let ((it (iterate 'stop-before-newline #t #f)))
                                 (loop until (or (iterator-out it) (string=? text (iterator-read it #t))))
                                 (iterator-loc it)))
+
+(define-higher-order-function til-back
+                              (insert)
+                              (motion str)
+                              (text)
+                              (let ((it (iterate 'stop-after-newline #f #f)))
+                                (loop until (or (iterator-out it) (string=? text (iterator-read it #f)))
+                                      do (iterator-read it #t))
+                                (iterator-loc it)))
+(define-higher-order-function find-back
+                              (insert)
+                              (motion str)
+                              (text)
+                              (let ((it (iterate 'stop-after-newline #f #f)))
+                                (loop until (or (iterator-out it) (string=? text (iterator-read it #t))))
+                                (iterator-loc it)))
