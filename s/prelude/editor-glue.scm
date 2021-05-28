@@ -14,7 +14,7 @@
 (defmacro define-mutation (name bindings perform undo)
   `(with-let *mutations*
              (define ,name
-               (let ,(map (lambda (x) (list (car x) #<undefined>)) bindings) ;#L`(,(car $) #<undefined>)
+               (let ,(map #L`(,(car $) #<undefined>) bindings)
                  (list
                    (lambda () ,@(map #L`(set! ,@$) bindings)) ;prepare
                    ,perform
@@ -23,15 +23,14 @@
               `(LOW-create-binding 'mutation ,key (apply LOW-make-mutation (*mutations* ',mutation))))
 
 (defun expand-hof (signature fn args modes ret)
-  ;(format #t "exp ~a ~a ~a ~a ~a~%" signature fn args modes ret)
   (if (null? signature)
      (cond
        ((eq? ret 'motion)
         `(LOW-make-motion (lambda () (,fn ,@args))))
        (#t (error 'simple-error "bad type ~a (most be motion)" ret)))
      (let* ((narg (cond ((eq? (car signature) 'str) 1)
-                       (#t (error 'simple-error "~a not a valid type" (car signature)))))
-            (targs (loop for - below narg collect (gensym)))) ;todo dotimes
+                        (#t (error 'simple-error "~a not a valid type" (car signature)))))
+            (targs (times narg (gensym))))
        `(LOW-make-higher-order-function 
           ',(car modes)
           ',(cons ret signature)

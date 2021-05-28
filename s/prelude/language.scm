@@ -107,4 +107,22 @@
                              (integer->char (logior b3 #b10000000)))))
     (#t (error 'utf8-error "codepoint out of range (must be <2²¹)"))))
 
+; like dotimes, but return a list of body
+; (times (i n) b) ←→ (loop for i below n collect b)
+; (times n b) ←→ (loop for (gensym) below n collect b)
+(defexpansion times (spec :rest body)
+              (let ((m (gensym))
+                    (r (gensym))
+                    (rt (gensym))
+                    (i (if (pair? spec) (car spec) (gensym)))
+                    (n (if (pair? spec) (cadr spec) spec)))
+                `(let* ((,r '(#<unspecified))
+                        (,rt ,r))
+                   (do ((,m ,n)
+                        (,i 0 (1+ ,i)))
+                     ((>= ,i ,m) (cdr ,r))
+                     (set! (cdr ,rt) (cons (begin ,@body) ()))
+                     (set! ,rt (cdr ,rt))))))
+
+
 ;(load "test.scm")
