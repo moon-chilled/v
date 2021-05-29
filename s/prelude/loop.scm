@@ -39,6 +39,9 @@
                 `(let ((,v (car ,sym)))
                    (set! ,sym (cdr ,sym))
                    ,v)))
+(define (last-pair l)
+  (if (pair? (cdr l))
+    (last-pair (cdr l)) l))
 
 ;;; this next one is a no-op but i need it as a marker for my cltl2
 ;;; translator.
@@ -628,14 +631,14 @@
          (if (eq? oper 'append)
            (begin
              (push `(set-cdr! ,tail (append ,expr (list))) loop)
-             (push `(set! ,tail (last-pair ,tail)) loop))
+             (push `(set! ,tail (,last-pair ,tail)) loop))
            (if (eq? oper 'collect)
              (begin
                (push `(set-cdr! ,tail (list ,expr)) loop)
-               (push `(set! ,tail (cdr ,tail)) loop))
+               (push `(set! ,tail (,last-pair ,tail)) loop))
              (begin 
                (push `(set-cdr! ,tail ,expr) loop)
-               (push `(set! ,tail (last-pair ,tail)) loop))))
+               (push `(set! ,tail (,last-pair ,tail)) loop))))
          ;; update user into variable inside the main loop
          ;; regardless of whether its a new collector or not
          (if into

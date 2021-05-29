@@ -49,7 +49,7 @@
                    (closers "]})>")
                    (open-delimiter (read-char))
                    (close-delimiter (let ((i (char-position open-delimiter openers)))
-                                      (if i (string-ref closers i) open-delimiter)))
+                                      (if i (closers i) open-delimiter)))
                    (depth 1))
               (apply string (loop for c = (peek-char)
                                   do (apply case c
