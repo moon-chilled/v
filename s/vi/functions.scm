@@ -54,34 +54,40 @@
                  (lambda () (LOW-text-insert (cursor-location) (car ch-loc))))
 
 
-(define-higher-order-function til
+(define-higher-order-function til motion
                               (insert)
-                              (motion str)
+                              (str)
                               (text)
                               (let ((it (iterate 'stop-before-newline #t #f)))
                                 (loop until (or (iterator-out it) (string=? text (iterator-read it #f)))
                                       do (iterator-read it #t))
                                 (iterator-loc it)))
-(define-higher-order-function find
+(define-higher-order-function find motion
                               (insert)
-                              (motion str)
+                              (str)
                               (text)
                               (let ((it (iterate 'stop-before-newline #t #f)))
                                 (loop until (or (iterator-out it) (string=? text (iterator-read it #t))))
                                 (iterator-loc it)))
 
-(define-higher-order-function til-back
+(define-higher-order-function til-back motion
                               (insert)
-                              (motion str)
+                              (str)
                               (text)
                               (let ((it (iterate 'stop-after-newline #f #f)))
                                 (loop until (or (iterator-out it) (string=? text (iterator-read it #f)))
                                       do (iterator-read it #t))
                                 (iterator-loc it)))
-(define-higher-order-function find-back
+(define-higher-order-function find-back motion
                               (insert)
-                              (motion str)
+                              (str)
                               (text)
                               (let ((it (iterate 'stop-after-newline #f #f)))
                                 (loop until (or (iterator-out it) (string=? text (iterator-read it #t))))
                                 (iterator-loc it)))
+
+(define-higher-order-function delete mutation
+                              (motion)
+                              (motion)
+                              (loc)
+                              (LOW-text-remove loc))

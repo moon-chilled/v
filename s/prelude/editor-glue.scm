@@ -27,8 +27,11 @@
      (cond
        ((eq? ret 'motion)
         `(LOW-make-motion (lambda () (,fn ,@args))))
-       (#t (error 'simple-error "bad type ~a (most be motion)" ret)))
+       ((eq? ret 'mutation)
+        `(LOW-make-mutation (lambda () ()) (lambda () (,fn ,@args)) (lambda () (error))))
+       (#t (error 'simple-error "bad type ~a" ret)))
      (let* ((narg (cond ((eq? (car signature) 'str) 1)
+                        ((eq? (car signature) 'motion) 1)
                         (#t (error 'simple-error "~a not a valid type" (car signature)))))
             (targs (times narg (gensym))))
        `(LOW-make-higher-order-function 
@@ -36,18 +39,18 @@
           ',(cons ret signature)
           (lambda ,targs ,(expand-hof (cdr signature) fn (append args targs) (cdr modes) ret))))))
 
-(defmacro define-higher-order-function (name modes signature params :rest body)
+(defmacro define-higher-order-function (name ret modes signature params :rest body)
   `(with-let *higher-order-functions*
              (define ,name
-               (list ',(car modes) ',signature ,(expand-hof (cdr signature) `(lambda ,params ,@body) () modes (car signature))))))
+               (list ',ret ,(expand-hof signature `(lambda ,params ,@body) () modes ret)))))
 (defmacro bind-higher-order-function (hof key)
-  `(LOW-create-binding ',(let ((fret (caadr (*higher-order-functions* hof))))
+  `(LOW-create-binding ',(let ((fret (car (*higher-order-functions* hof))))
                            (cond
                              ((symbol? fret) fret)
                              ((pair? fret) 'function)
                              (#t (error 'simple-error "~a not a valid return type in signature" fret))))
                        ,key
-                       (caddr (*higher-order-functions* ',hof))))
+                       (cadr (*higher-order-functions* ',hof))))
 
 (defmacro bind-insertion (category name key)
   `(LOW-create-binding 'insert ,key ,(cond

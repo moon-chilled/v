@@ -111,7 +111,7 @@ static s7_pointer make_higher_order_function(s7_scheme *s, s7_pointer args, VV *
 	else if (s7_is_eq(smode, vv->sym_mutation)) mode = ModeMutate;
 	else if (s7_is_eq(smode, vv->sym_function)) mode = ModeFunction;
 	else {
-		return s7_wrong_type_arg_error(s, "LOW-make-higher-order-function", 1, smode, "a symbol: one of insert, motion, transform, or function)");
+		return s7_wrong_type_arg_error(s, "LOW-make-higher-order-function", 1, smode, "a symbol: one of insert, motion, mutation, or function)");
 	}
 
 	Type type;
