@@ -1,38 +1,6 @@
 #include "v.h"
 
-static void perform_delete(V *v, const void *state) {
-	const Loc *dst = state;
-#if 0
-	if (dst->y < v->b.loc.y) {
-		for (usz i = dst->y + 1; i < v->b.loc.y-1; i++) {
-			tb_remove_line(&v->b.tb, dst->y + 1);
-		}
-		//todo can have 'tb_emplace'
-		tb_remove(&v->b.tb, dst->y, dst->x, v->b.tb.lines[dst->y].l - dst->x);
-		tb_insert(&v->b.tb, dst->y, dst->x, v->b.tb.lines[dst->y+1].glyphs + v->b.loc.x, v->b.tb.lines[dst->y+1].l - v->b.loc.x);
-		tb_remove_line(&v->b.tb, dst->y + 1);
-		v->b.loc = *dst;
-		return;
-	} else if (dst->y > v->b.loc.y) {
-		assert(0); //todo
-		return;
-	}
-#endif
-	assert (dst->y == v->b.loc.y); //todo
-
-	b_remove(&v->b, dst->col);
-}
-static void undo_delete(V *v, const void *state) { assert(0); /*todo*/ }
-static Function deleter(const V *v, void *state, const Function *other) {
-	assert (other->type.type == TypeMotion); //wg14 y u no HKT
-	Loc *nloc = new(Loc, 1);
-	*nloc = other->motion.perform(v, other->motion.state);
-	return new_mutation(nloc, NULL, perform_delete, undo_delete);
-	//todo pass other into prep
-}
-
 #define HOF(n, nmode, ret, parm, fun) static Type cv__ ## n ## __type[2] = {{.type=parm}, {.type=ret}}; Function hof_ ## n = {.type={.type=TypeFunction, .fn=cv__ ## n ## __type}, .function={.mode=nmode, .transform=fun}}
-HOF(delete, ModeDefault, TypeMutation, TypeMotion, deleter);
 #undef HOF
 
 #define EMUT(name, fprepare, fperform, fundo) Function mutation_ ## name = {.type={TypeMutation}, .mutation={.prepare=fprepare, .perform=fperform, .undo=fundo}}

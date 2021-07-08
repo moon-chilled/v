@@ -3,19 +3,19 @@
 static s7_pointer s7_make_v_function(VV *vv, Function f) {
 	switch (f.type.type) {
 		case TypeStr: return s7_make_string_with_length(vv->s, (const char*)f.str.s, f.str.l);
-		case TypeMotion: return s7_make_c_pointer_with_type(vv->s, cnew(f), vv->sym_function_motion, s7_nil(vv->s));
-		case TypeMutation: return s7_make_c_pointer_with_type(vv->s, cnew(f), vv->sym_function_mutation, s7_nil(vv->s));
-		case TypeFunction: return s7_make_c_pointer_with_type(vv->s, cnew(f), vv->sym_function_function, s7_nil(vv->s));
+		case TypeMotion:   return s7_make_c_object(vv->s, vv->tag_function_motion,   cnew(f));
+		case TypeMutation: return s7_make_c_object(vv->s, vv->tag_function_mutation, cnew(f));
+		case TypeFunction: return s7_make_c_object(vv->s, vv->tag_function_function, cnew(f));
 		default: assert(0);
 	}
 }
 
 static Function *s7_to_v_function(VV *vv, s7_pointer p) {
-	if (!(s7_is_c_pointer_of_type(p, vv->sym_function_function) || s7_is_c_pointer_of_type(p, vv->sym_function_mutation) || s7_is_c_pointer_of_type(p, vv->sym_function_motion))) {
+	s7_int t = s7_c_object_type(p); //returns -1 for non-c-objects, so no problem if it's something else entirely
+	if (t != vv->tag_function_function && t != vv->tag_function_mutation && t != vv->tag_function_motion) {
 		return NULL;
-	} else {
-		return s7_c_pointer(p);
 	}
+	return s7_c_object_value(p);
 }
 
 struct s7_mutation { s7_pointer prepare, perform, undo; };
@@ -100,10 +100,10 @@ solo:
 
 //todo check aritability of functions
 
-// type -> function -> cpointer
+// type -> function -> cobject
 static s7_pointer make_higher_order_function(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_make_higher_order_function "(LOW-make-higher-order-function mode signature fn) makes a higher-order function out of fn with signature signature"
-#define Q_make_higher_order_function s7_make_signature(vv->s, 3, vv->sym_c_pointer_p, vv->sym_list_p, vv->sym_procedure_p)
+#define Q_make_higher_order_function s7_make_signature(vv->s, 3, vv->sym_c_object_p, vv->sym_list_p, vv->sym_procedure_p)
 	Mode mode;
 	POP(smode, "LOW-make-higher-order-function", s7_is_symbol, "symbol");
 	if (s7_is_eq(smode, vv->sym_insert)) mode = ModeInsert;
@@ -128,35 +128,35 @@ static s7_pointer make_higher_order_function(s7_scheme *s, s7_pointer args, VV *
 			.transform = s7_function_transform,
 		},
 	};
-	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_function, s7_nil(s));
+	return s7_make_v_function(vv, r);
 }
 
-// function -> cpointer
+// function -> cobject
 static s7_pointer make_motion(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_make_motion "(LOW-make-motion fn) makes a motion out of fn"
-#define Q_make_motion s7_make_signature(vv->s, 2, vv->sym_c_pointer_p, vv->sym_procedure_p)
+#define Q_make_motion s7_make_signature(vv->s, 2, vv->sym_c_object_p, vv->sym_procedure_p)
 	PPOP(f, "LOW-make-motion");
 
 	Function r = new_motion(f, motion_perform);
-	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_motion, s7_nil(s));
+	return s7_make_v_function(vv, r);
 }
 
-// function -> function -> function -> cpointer
+// function -> function -> function -> cobject
 static s7_pointer make_mutation(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_make_mutation "(LOW-make-mutation prepare perform undo) makes a mutation out of its parameters"
-#define Q_make_mutation s7_make_signature(vv->s, 2, vv->sym_c_pointer_p, vv->sym_procedure_p, vv->sym_procedure_p, vv->sym_procedure_p)
+#define Q_make_mutation s7_make_signature(vv->s, 2, vv->sym_c_object_p, vv->sym_procedure_p, vv->sym_procedure_p, vv->sym_procedure_p)
 	PPOP(prepare, "LOW-make-motion");
 	PPOP(perform, "LOW-make-motion");
 	PPOP(undo, "LOW-make-motion");
 
 	Function r = new_mutation(onew(struct s7_mutation, .prepare=prepare, .perform=perform, .undo=undo), s7_mutation_prepare, s7_mutation_perform, s7_mutation_undo);
-	return s7_make_c_pointer_with_type(s, cnew(r), vv->sym_function_mutation, s7_nil(s));
+	return s7_make_v_function(vv, r);
 }
 
-// symbol (mode) -> character -> cpointer -> nil
+// symbol (mode) -> character -> cobject -> nil
 static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
-#define H_create_binding "(LOW-create-binding mode character-or-special pointer) establishes a mapping in mode from character to the function indicated by pointer"
-#define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, s7_make_signature(vv->s, 2, vv->sym_character_p, vv->sym_symbol_p), vv->sym_c_pointer_p)
+#define H_create_binding "(LOW-create-binding mode character-or-special object) establishes a mapping in mode from character to the function indicated by object"
+#define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, s7_make_signature(vv->s, 2, vv->sym_character_p, vv->sym_symbol_p), vv->sym_c_object_p)
 	POP(mode, "LOW-create-binding", s7_is_symbol, "symbol");
 
 	GPOP(ch_or_sp, "LOW-create-binding");
@@ -164,10 +164,10 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number-1, ch_or_sp, "a character or a symbol");
 	}
 
-	POP(bj, "LOW-create-binding", s7_is_c_pointer, "c pointer");
+	GPOP(bj, "LOW-create-binding");
 	Function *f = s7_to_v_function(vv, bj);
 	if (!f) {
-		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number-1, bj, "a c pointer with type function-function, function-transformation, or function-motion");
+		return s7_wrong_type_arg_error(s, "LOW-create-binding", _argument_number-1, bj, "a c object with type function-function, function-transformation, or function-motion");
 	}
 
 	Keymap *km = NULL;
@@ -320,11 +320,26 @@ static s7_pointer cursor_accessor(s7_scheme *s, s7_pointer args, VV *vv) {PRELUD
 	return s7_wrong_type_arg_error(s, "cursor", 2, it, "one of y or gx");
 }
 
+static s7_pointer function_motion_accessor(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
+	CPPOP(Function, f, NULL, vv->tag_function_motion);
+	if (!s7_is_null(s, args)) {
+		return s7_wrong_number_of_args_error(s, "function-motion", _original_args);
+	}
+	assert(f->type.type == TypeMotion);
+	return s7_make_c_object(s, vv->tag_loc, cnew(f->motion.perform(vv->v, f->motion.state)));
+}
+
 // 'LOW': low-level functions that may be inconvenient to use; you may prefer to use the higher-level wrappers defined by the boot code
 // 'UNSAFE': unsafe functions that can create inconsistent state and whose use is prone to memory bugs
 void vs7_init(VV *vv) {
-	vv->tag_loc = s7_make_c_type(vv->s, "cursor");
-	s7_c_type_set_ref(vv->s, vv->tag_loc, create_thunk(cursor_accessor, 1, 2, vv));
+#define TAG(n, sn) vv->tag_ ## n = s7_make_c_type(vv->s, sn)
+#define ATAG(n, sn, f) TAG(n, sn); s7_c_type_set_ref(vv->s, vv->tag_ ## n, create_thunk(f, 1, 2, vv))
+	ATAG(loc, "cursor", cursor_accessor);
+	ATAG(function_motion, "function-motion", function_motion_accessor);
+	TAG(function_function, "function-function");
+	TAG(function_mutation, "function-mutation");
+#undef ATAG
+#undef TAG
 
 	s7_pointer (*_v_thunk_typechecker)(s7_scheme*, s7_pointer, VV*);
 #define FN(sn, cn, param) s7_define_typed_function(vv->s, sn, cn, param, param, false, H_ ## cn, Q_ ## cn)

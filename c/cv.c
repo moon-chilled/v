@@ -103,7 +103,11 @@ static int mode_render(TickitWindow *win, TickitEventFlags flags, void *_info, v
 	tickit_pen_set_bool_attr(p, TICKIT_PEN_UNDER, true);
 	set_pen_colour(p, 0x4c4c4c);
 	tickit_renderbuffer_setpen(info->rb, p);
-	tickit_renderbuffer_text_at(info->rb, 0, 0, v->mode == ModeNormal ? "normal" : "insert");
+	tickit_renderbuffer_text_at(info->rb, 0, 0, v->mode == ModeNormal ? "normal" :
+	                                            v->mode == ModeInsert ? "insert" :
+	                                            v->mode == ModeMotion ? "motion" :
+	                                            v->mode == ModeMutate ? "mutate" :
+	                                            v->mode == ModeFunction ? "->" : "???");
 	tickit_pen_unref(p);
 	return 1;
 }
@@ -223,9 +227,6 @@ void init_vv(VV *vv) {
 #define PSYM(x) vv->sym_ ##x##_p = s7_make_symbol(vv->s, #x "?")
 	SSYM(v);
 	SYM(text_buffer_iter, "text-buffer-iter");
-	SYM(function_function, "function-function");
-	SYM(function_mutation, "function-mutation");
-	SYM(function_motion, "function-motion");
 	SSYM(default);
 	SSYM(insert);
 	SSYM(bottom);
@@ -250,6 +251,7 @@ void init_vv(VV *vv) {
 	PSYM(procedure);
 	PSYM(character);
 	SYM(c_pointer_p, "c-pointer?");
+	SYM(c_object_p, "c-object?");
 	PSYM(symbol);
 	SSYM(not);
 	PSYM(pair);
@@ -280,7 +282,6 @@ void init_vv(VV *vv) {
 
 	//vv->km_motion.ascii['t'] = cnew(hof_move_until);
 
-	vv->km_mutate.ascii['d'] = cnew(hof_delete);
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 
 	vs7_init(vv);

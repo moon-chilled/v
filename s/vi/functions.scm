@@ -90,4 +90,4 @@
                               (motion)
                               (motion)
                               (loc)
-                              (LOW-text-remove loc))
+                              (LOW-text-remove (loc)))
