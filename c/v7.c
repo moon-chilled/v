@@ -102,19 +102,35 @@ solo:
 #define PPOP(x, fn) POP(x, fn, s7_is_procedure, "procedure")
 #define BPOP(x, fn) STPOP(bool, x, s7_boolean, fn, s7_is_boolean, "boolean")
 
+static bool sym_to_mode(VV *vv, s7_pointer sym, Mode *mode) {
+	if (s7_is_eq(sym, vv->sym_insert)) *mode = ModeInsert;
+	else if (s7_is_eq(sym, vv->sym_motion)) *mode = ModeMotion;
+	else if (s7_is_eq(sym, vv->sym_mutation)) *mode = ModeMutate;
+	else if (s7_is_eq(sym, vv->sym_function)) *mode = ModeFunction;
+	else if (s7_is_eq(sym, vv->sym_normal)) *mode = ModeNormal;
+	else return false;
+	return true;
+}
+static s7_pointer mode_to_sym(Mode m, VV *vv) {
+	switch (m) {
+		case ModeInsert: return vv->sym_insert;
+		case ModeMotion: return vv->sym_motion;
+		case ModeMutate: return vv->sym_mutation;
+		case ModeFunction: return vv->sym_function;
+		case ModeNormal: return vv->sym_normal;
+		default: assert(0);
+	}
+}
+
 //todo check aritability of functions
 
 // type -> function -> cobject
 static s7_pointer make_higher_order_function(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 #define H_make_higher_order_function "(LOW-make-higher-order-function mode signature fn) makes a higher-order function out of fn with signature signature"
 #define Q_make_higher_order_function s7_make_signature(vv->s, 3, vv->sym_c_object_p, vv->sym_list_p, vv->sym_procedure_p)
-	Mode mode;
 	POP(smode, "LOW-make-higher-order-function", s7_is_symbol, "symbol");
-	if (s7_is_eq(smode, vv->sym_insert)) mode = ModeInsert;
-	else if (s7_is_eq(smode, vv->sym_motion)) mode = ModeMotion;
-	else if (s7_is_eq(smode, vv->sym_mutation)) mode = ModeMutate;
-	else if (s7_is_eq(smode, vv->sym_function)) mode = ModeFunction;
-	else {
+	Mode mode;
+	if (!sym_to_mode(vv, smode, &mode)) {
 		return s7_wrong_type_arg_error(s, "LOW-make-higher-order-function", 1, smode, "a symbol: one of insert, motion, mutation, or function)");
 	}
 
@@ -198,6 +214,26 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 	*tgt = cnew(*f);
 
 	return s7_f(s);
+}
+
+// symbol -> ()
+static s7_pointer change_mode(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
+#define H_change_mode "(LOW-change-mode mode) changes the current v's mode to the given one"
+#define Q_change_mode s7_make_signature(vv->s, 2, vv->sym_not, vv->sym_symbol_p)
+	POP(smode, "LOW-change-mode", s7_is_symbol, "symbol");
+	Mode mode;
+	if (!sym_to_mode(vv, smode, &mode)) {
+		return s7_wrong_type_arg_error(s, "LOW-change-mode", 1, smode, "a symbol: one of insert, motion, mutation, or function)");
+	}
+	vv->v->mode = mode;
+	return s7_f(s);
+}
+
+// () -> symbol
+static s7_pointer current_mode(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
+#define H_current_mode "(current-mode) returns the current v's mode"
+#define Q_current_mode s7_make_signature(vv->s, 1, vv->sym_symbol_p)
+	return mode_to_sym(vv->v->mode, vv);
 }
 
 static s7_pointer cursor_location(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
@@ -356,6 +392,8 @@ void vs7_init(VV *vv) {
 	VVTFN("LOW-create-binding", create_binding, 3);
 	VVTFN("LOW-text-remove", text_remove, 1);
 	VVTFN("LOW-text-insert", text_insert, 2);
+	VVTFN("LOW-change-mode", change_mode, 1);
+	VVTFN("current-mode", current_mode, 0);
 	VVTFN("cursor-at", cursor_at, 2);
 	VVTFN("cursor-location", cursor_location, 0);
 

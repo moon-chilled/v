@@ -53,6 +53,14 @@
                  (lambda () (LOW-text-remove (cdr ch-loc)))
                  (lambda () (LOW-text-insert (cursor-location) (car ch-loc))))
 
+(define-mutation insert-mode
+                 ((m (current-mode)))
+                 (lambda () (LOW-change-mode 'insert))
+                 (lambda () (LOW-change-mode m)))
+(define-mutation normal-mode
+                 ((m (current-mode)))
+                 (lambda () (LOW-change-mode 'normal))
+                 (lambda () (LOW-change-mode m)))
 
 (define-higher-order-function til motion
                               (insert)
@@ -91,3 +99,10 @@
                               (motion)
                               (loc)
                               (LOW-text-remove (loc)))
+
+(define-higher-order-function change mutation
+                              (motion)
+                              (motion)
+                              (loc)
+                              (LOW-text-remove (loc))
+                              (LOW-change-mode 'insert))

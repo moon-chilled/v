@@ -236,6 +236,7 @@ void init_vv(VV *vv) {
 	SSYM(motion);
 	SSYM(mutation);
 	SSYM(function);
+	SSYM(normal);
 	SSYM(top);
 	SYM(stop_before_nl, "stop-before-newline");
 	SYM(stop_after_nl, "stop-after-newline");
@@ -266,29 +267,12 @@ void init_vv(VV *vv) {
 #undef SSYM
 #undef SYM
 
-
-	//vv->km_insert.special[SpecialKeyLeft] = cnew(motion_cleft);
-	//vv->km_insert.special[SpecialKeyRight] = cnew(motion_cright);
-	//vv->km_insert.special[SpecialKeyUp] = cnew(motion_cup);
-	//vv->km_insert.special[SpecialKeyDown] = cnew(motion_cdown);
 	vv->km_insert.special[SpecialKeyEnter] = cnew(mutation_ins_nl);
-	//vv->km_insert.special[SpecialKeyBackspace] = cnew(mutation_delback);
-	//vv->km_insert.special[SpecialKeyDelete] = cnew(mutation_delforward);
-	vv->km_insert.special[SpecialKeyEscape] = cnew(mutation_normal);
-
-	vv->km_mutate.ascii['i'] = cnew(mutation_insert);
 	vv->km_mutate.ascii['u'] = cnew(mutation_undo);
-	//vv->km_mutate.ascii['o'] = cnew(mutation_add_nl);
-	//vv->km_mutate.ascii['O'] = cnew(mutation_prep_nl);
-	//vv->km_mutate.ascii['I'] = cnew(mutation_insert_front);
-	//vv->km_mutate.ascii['A'] = cnew(mutation_insert_back);
-
-	//vv->km_motion.ascii['t'] = cnew(hof_move_until);
 
 	//todo in normal mode esc should return bottom type (so it gets run immediately) and clear the stack
 
 	vs7_init(vv);
-	//s7_load(vv->s, "s/boot.scm");
 }
 
 int main(void) {
