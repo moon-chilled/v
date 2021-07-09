@@ -13,6 +13,10 @@ static s7_pointer s7_make_v_function(VV *vv, Function f) {
 static Function *s7_to_v_function(VV *vv, s7_pointer p) {
 	s7_int t = s7_c_object_type(p); //returns -1 for non-c-objects, so no problem if it's something else entirely
 	if (t != vv->tag_function_function && t != vv->tag_function_mutation && t != vv->tag_function_motion) {
+		if (s7_is_string(p)) {
+			//ugh, cnew
+			return cnew((Function){.type.type=TypeStr, .str={.s=(const u1*)s7_string(p), .l=s7_string_length(p)}});
+		}
 		return NULL;
 	}
 	return s7_c_object_value(p);
@@ -155,8 +159,8 @@ static s7_pointer make_mutation(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 
 // symbol (mode) -> character -> cobject -> nil
 static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
-#define H_create_binding "(LOW-create-binding mode character-or-special object) establishes a mapping in mode from character to the function indicated by object"
-#define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, s7_make_signature(vv->s, 2, vv->sym_character_p, vv->sym_symbol_p), vv->sym_c_object_p)
+#define H_create_binding "(LOW-create-binding mode character-or-special object-or-string) establishes a mapping in mode from character to the function indicated by object"
+#define Q_create_binding s7_make_signature(vv->s, 4, vv->sym_not, vv->sym_symbol_p, s7_make_signature(vv->s, 2, vv->sym_character_p, vv->sym_symbol_p), s7_make_signature(vv->s, 2, vv->sym_string_p, vv->sym_c_object_p))
 	POP(mode, "LOW-create-binding", s7_is_symbol, "symbol");
 
 	GPOP(ch_or_sp, "LOW-create-binding");
@@ -188,8 +192,9 @@ static s7_pointer create_binding(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
 	else if (s7_is_eq(ch_or_sp, vv->sym_backspace)) tgt = km->special + SpecialKeyBackspace;
 	else if (s7_is_eq(ch_or_sp, vv->sym_delete)) tgt = km->special + SpecialKeyDelete;
 	else if (s7_is_eq(ch_or_sp, vv->sym_escape)) tgt = km->special + SpecialKeyEscape;
+	else if (s7_is_eq(ch_or_sp, vv->sym_tab)) tgt = km->special + SpecialKeyTab;
 
-	if (!tgt) return s7_wrong_type_arg_error(s, "LOW-create-binding", 2, ch_or_sp, "a character or a symbol in (left right up down enter backspace delete escape)");
+	if (!tgt) return s7_wrong_type_arg_error(s, "LOW-create-binding", 2, ch_or_sp, "a character or a symbol in (left right up down enter backspace delete escape tab)");
 	*tgt = cnew(*f);
 
 	return s7_f(s);

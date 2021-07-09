@@ -19,6 +19,7 @@
 
 (bind-insertion mutation delforward 'delete)
 (bind-insertion mutation delbackward 'backspace)
+(LOW-create-binding 'insert 'tab "\t")
 
 (bind-higher-order-function til #\t)
 (bind-higher-order-function find #\f)

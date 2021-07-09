@@ -55,6 +55,7 @@ static bool tickit_to_key(const char *s, SpecialKey *k) {
 	if (!strcmp(s, "Backspace")) return *k = SpecialKeyBackspace;
 	if (!strcmp(s, "Delete")) return *k = SpecialKeyDelete;
 	if (!strcmp(s, "Escape")) return *k = SpecialKeyEscape;
+	if (!strcmp(s, "Tab")) return *k = SpecialKeyTab;
 	return false;
 }
 /* from https://github.com/tmux/tmux/pull/432 */
@@ -188,6 +189,7 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			tbi_read(tbi, true, &text, &bext, &vext);
 			tickit_renderbuffer_textn_at(info->rb, i, voff, (const char*)text, bext);
 			// no vy.  Vertical tab can fuck RIGHT off
+			if (*text == '\t') vext = 8 - voff%8;
 			voff += vext;
 			if (theline && tbi_cursor(tbi).gx <= v->b.loc.gx) vx += vext;
 		}
@@ -248,6 +250,7 @@ void init_vv(VV *vv) {
 	SSYM(backspace);
 	SSYM(delete);
 	SSYM(escape);
+	SSYM(tab);
 	PSYM(procedure);
 	PSYM(character);
 	SYM(c_pointer_p, "c-pointer?");
