@@ -122,6 +122,31 @@ static s7_pointer mode_to_sym(Mode m, VV *vv) {
 	}
 }
 
+
+struct s7_hi_env { s7_pointer hi, conv; };
+static struct hi_ret s7_highlight(VV *vv, void *env, s7_pointer old_state, TextBufferIter *tbi) {
+	struct s7_hi_env *e = env;
+	s7_pointer new_state = s7_call(vv->s, e->hi, s7_cons(vv->s, s7_make_c_pointer_with_type(vv->s, tbi, vv->sym_text_buffer_iter, s7_nil(vv->s)), s7_cons(vv->s, old_state, s7_nil(vv->s))));
+	s7_pointer clr = s7_call(vv->s, e->conv, s7_cons(vv->s, new_state, s7_nil(vv->s)));
+	assert(s7_is_integer(clr));
+	return (struct hi_ret){s7_integer(clr), new_state};
+}
+
+
+
+static s7_pointer set_highlighter(s7_scheme *s, s7_pointer args, VV *vv) {PRELUDE
+#define H_set_highlighter "(set-highlighter init-state state-step conv) sets the syntax highlighter for the current v"
+#define Q_set_highlighter s7_make_signature(vv->s, 3, vv->sym_not, vv->sym_procedure_p, vv->sym_procedure_p)
+	GPOP(init, "set-highlighter");
+	PPOP(highlight, "set-highlighter");
+	PPOP(conv, "set-highlighter");
+
+	Highlighter nh = {.env=onew(struct s7_hi_env, .hi=highlight, .conv=conv), .init_state=init, .highlight=s7_highlight};
+	vv->v->highlighter = nh;
+
+	return s7_f(s);
+}
+
 //todo check aritability of functions
 
 // type -> function -> cobject
@@ -405,6 +430,8 @@ void vs7_init(VV *vv) {
 	VVTFN("line-count", line_count, 0);
 	VVTFN("byte-count", byte_count, 1);
 	VVTFN("grapheme-count", grapheme_count, 1);
+
+	VVTFN("set-highlighter", set_highlighter, 3);
 #undef VVTFN
 #undef FN
 

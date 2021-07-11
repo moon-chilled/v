@@ -57,3 +57,7 @@
                                        ((eq? category 'motion) `(LOW-make-motion (*motions* ',name)))
                                        ((eq? category 'mutation) `(apply LOW-make-mutation (*mutations* ',name)))
                                        (#t (error 'wrong-type-arg "~a must be either motion or mutation" category)))))
+
+(define *v-init-hooks* ())
+(defun do-init-v () (loop for f in *v-init-hooks* do (f)))
+(defun add-v-init-hook (f) (push f *v-init-hooks*))

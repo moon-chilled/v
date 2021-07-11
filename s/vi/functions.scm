@@ -1,6 +1,6 @@
 (define-motion cleft
                (let ((it (iterate 'stop-after-newline #f #f)))
-                 (iterator-read it #t)
+                 (unless (iterator-out it) (iterator-read it #t))
                  (iterator-loc it)))
 (define-motion cright
                (let ((it (iterate 'stop-before-newline #t #f)))

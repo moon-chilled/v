@@ -27,6 +27,12 @@
               `(call-with-exit (lambda (return) ,@body)))
 (defexpansion assert (c) `(unless ,c (error 'assertion-failure "unhandled assertion ~a" ',c)))
 
+(defexpansion push (v sym)
+              (assert (symbol? sym))
+              `(begin
+                 (set! ,sym (cons ,v ,sym))
+                 ,sym))
+
 (defexpansion add-reader (character :rest body)
               (let ((str (gensym)))
                 `(set! *#readers*

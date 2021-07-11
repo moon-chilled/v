@@ -52,6 +52,7 @@ void tb_insert(TextBuffer *tb, usz ln, usz byte, const u1 *text, usz bytes, usz 
 	measure(text, bytes, gadv);
 	tb->lines[ln].bsz += bytes;
 	tb->lines[ln].gsz += *gadv;
+	tb->generation++;
 }
 
 void tb_remove(TextBuffer *tb, usz ln, usz byte, usz bext, usz gext) {
@@ -61,6 +62,7 @@ void tb_remove(TextBuffer *tb, usz ln, usz byte, usz bext, usz gext) {
 	tb->lines[ln].bsz -= bext;
 	tb->lines[ln].gsz -= gext;
 	tb->lines[ln].chars = GC_realloc(tb->lines[ln].chars, tb->lines[ln].bsz);
+	tb->generation++;
 }
 
 void tb_insert_line(TextBuffer *tb, usz ln) {
@@ -68,12 +70,14 @@ void tb_insert_line(TextBuffer *tb, usz ln) {
 	tb->lines = GC_realloc(tb->lines, ++tb->l * sizeof(*tb->lines));
 	memmove(tb->lines + ln + 1, tb->lines + ln, (tb->l - ln - 1) * sizeof(*tb->lines));
 	memset(&tb->lines[ln], 0, sizeof(tb->lines[ln]));
+	tb->generation++;
 }
 
 void tb_remove_line(TextBuffer *tb, usz ln) {
 	assert (ln < tb->l);
 	memmove(tb->lines + ln, tb->lines + ln + 1, (tb->l - ln - 1) * sizeof(*tb->lines));
 	tb->lines = GC_realloc(tb->lines, --tb->l * sizeof(*tb->lines));
+	tb->generation++;
 }
 
 Loc tb_cursor_at(const TextBuffer *t, usz ln, usz grapheme) {
@@ -88,11 +92,12 @@ struct TextBufferIter {
 	TbiMode mode;
 	bool forward;
 	bool out;
+	u8 generation;
 };
 
 //todo invalidate iterators upon mutating
 TextBufferIter *tb_iter(TextBuffer *tb, Loc cursor, TbiMode mode, bool forward, bool autosquish) {
-	TextBufferIter *ret = onew(TextBufferIter, tb, cursor, mode, forward);
+	TextBufferIter *ret = onew(TextBufferIter, .tb=tb, .cursor=cursor, .mode=mode, .forward=forward, .generation=tb->generation);
 	if (cursor.bx >= tb->lines[cursor.y].bsz && mode == TbiMode_StopBeforeNl) {
 		if (!forward && autosquish && tb->lines[cursor.y].bsz) {
 			while (!u8_advance(ret->tb->lines[cursor.y].chars[--ret->cursor.bx]));
@@ -115,7 +120,10 @@ TextBufferIter *tb_iter(TextBuffer *tb, Loc cursor, TbiMode mode, bool forward, 
 	return ret;
 }
 
+TextBufferIter *tbi_clone(TextBufferIter *tbi) { return cnew(*tbi); }
+
 void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *vsz) {
+	assert(tbi->generation == tbi->tb->generation);
 	assert(!tbi->out);
 	bool nout = false;
 	Loc nc = tbi->cursor;

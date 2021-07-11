@@ -120,6 +120,32 @@ void msg(V *v, const char *fmt, ...) {
 	tickit_window_expose(v->message_window, NULL);
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+struct hi_ret dumb_highlight(VV *vv, void *env, s7_pointer old_state, TextBufferIter *tbi) {
+	tbi_read(tbi, true, &(const u1*){NULL}, &(usz){0}, &(usz){0});
+	return (struct hi_ret){.colour=0xffff00, .state=old_state};
+}
+
+
+
+
+
+
+
+
+
+
 Function *lookupg(VV *vv, Mode mode, u1 c) {
 	if (c >= 128) return NULL;
 	if ((mode & ModeMotion) && vv->km_motion.ascii[c]) return vv->km_motion.ascii[c];
@@ -173,32 +199,44 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 	V *v = data;
 	tickit_renderbuffer_clear(info->rb);
 
-	TickitPen *normal = tickit_pen_new();
+	TickitPen *text_pen = tickit_pen_new();
 	TickitPen *eol = tickit_pen_new();
 	set_pen_colour(eol, 0x0090ee);
 
 	usz vx = 0;
-	for (usz i = 0; i < v->b.tb.l; i++) {
-		tickit_renderbuffer_setpen(info->rb, normal);
-		TextBufferIter *tbi = tb_iter(&v->b.tb, (Loc){.y=i}, TbiMode_StopBeforeNl, true, false);
-		bool theline = tbi_cursor(tbi).y == v->b.loc.y;
-		usz voff = 0;
-		while (!tbi_out(tbi)) {
+	usz vy = 0;
+	usz voff = 0;
+	TextBufferIter *tbi = tb_iter(&v->b.tb, (Loc){0}, TbiMode_EatEverything, true, false);
+	TextBufferIter *hi_tbi = tbi_clone(tbi);
+	s7_pointer cur_hi_state = v->highlighter.init_state;
+	while (!tbi_out(tbi)) {
+		struct hi_ret h = v->highlighter.highlight(v->vv, v->highlighter.env, cur_hi_state, hi_tbi);
+		cur_hi_state = h.state;
+		set_pen_colour(text_pen, h.colour);
+		tickit_renderbuffer_setpen(info->rb, text_pen);
+		Loc hloc = tbi_cursor(hi_tbi);
+		while (tbi_cursor(tbi).y < hloc.y || (tbi_cursor(tbi).y == hloc.y && tbi_cursor(tbi).gx < hloc.gx)) {
 			const u1 *text;
 			usz bext, vext;
+			Loc pc = tbi_cursor(tbi);
 			tbi_read(tbi, true, &text, &bext, &vext);
-			tickit_renderbuffer_textn_at(info->rb, i, voff, (const char*)text, bext);
-			// no vy.  Vertical tab can fuck RIGHT off
+			tickit_renderbuffer_textn_at(info->rb, vy, voff, (const char*)text, bext);
 			if (*text == '\t') vext = 8 - voff%8;
-			voff += vext;
-			if (theline && tbi_cursor(tbi).gx <= v->b.loc.gx) vx += vext;
+			if (*text == '\n') {
+				tickit_renderbuffer_setpen(info->rb, eol);
+				tickit_renderbuffer_char_at(info->rb, vy, voff, '$');
+				vy++;
+				voff = 0;
+			} else {
+				voff += vext;
+			}
+			if (pc.y == v->b.loc.y && pc.gx < v->b.loc.gx) vx += vext;
 		}
-		tickit_renderbuffer_setpen(info->rb, eol);
-		tickit_renderbuffer_char(info->rb, '$');
 	}
+
 	tickit_window_set_cursor_position(win, v->b.loc.y, vx);
 
-	tickit_pen_unref(normal);
+	tickit_pen_unref(text_pen);
 	tickit_pen_unref(eol);
 
 	tickit_window_expose(v->mode_window, NULL); //todo
@@ -218,6 +256,10 @@ void init_v(VV *vv, V *v) {
 	tb_insert_line(&v->b.tb, 0);
 
 	v->mode = ModeNormal;
+
+	v->highlighter = (Highlighter){.env=NULL, .init_state=NULL, .highlight=dumb_highlight};
+
+	s7_call(vv->s, s7_name_to_value(vv->s, "do-init-v"), s7_nil(vv->s));
 }
 
 void init_vv(VV *vv) {

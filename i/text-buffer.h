@@ -82,6 +82,7 @@ typedef struct {
 		// need some representation of visual offset/columns, but that's difficult because of context-dependent things like tabs, so prefer to defer that to draw time
 	} *lines;
 	usz l;
+	u8 generation;
 } TextBuffer;
 typedef struct TextBufferIter TextBufferIter;
 
@@ -99,6 +100,7 @@ void tb_insert_line(TextBuffer *buffer, usz ln);
 void tb_remove_line(TextBuffer *buffer, usz ln);
 Loc tb_cursor_at(const TextBuffer *buffer, usz ln, usz grapheme);
 TextBufferIter *tb_iter(TextBuffer *buffer, Loc cursor, TbiMode mode, bool forward, bool autosquish);
+TextBufferIter *tbi_clone(TextBufferIter *tbi);
 void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *vsz); //vsz is visual size e.g. double-width, tab...
 bool tbi_out(const TextBufferIter *tbi);
 Loc tbi_cursor(const TextBufferIter *tbi);

@@ -13,6 +13,11 @@ typedef enum {
 	ModeNormal = ModeMotion | ModeMutate | ModeFunction, //todo this needs an ordering
 } Mode;
 
+typedef enum {
+	HookVInit,
+	HookMax,
+} Hook;
+
 #include <tickit.h>
 #include "s7.h"
 #include "prelude.h"
@@ -38,6 +43,13 @@ typedef struct {
 } Keymap;
 
 typedef struct VV VV;
+
+typedef struct {
+	void *env;
+	s7_pointer init_state;
+	struct hi_ret { u4 colour; s7_pointer state; } (*highlight)(VV *vv, void *env, s7_pointer old_state, TextBufferIter *tbi);
+} Highlighter;
+
 struct V {
 	VV *vv;
 	s7_pointer env;
@@ -46,6 +58,7 @@ struct V {
 	Buffer b;
 	Mode mode;
 	AppliedFunction most_recent;
+	Highlighter highlighter;
 
 	struct {
 		Function f;
@@ -68,6 +81,9 @@ struct VV {
 
 	Keymap km_motion, km_mutate, km_function;
 	Keymap km_insert; //only for specials
+
+	//(*hooks[mode])(v)
+	//void (*(*hooks[HookMax]))(V *v)
 };
 
 void vs7_init(VV *vv);
