@@ -265,7 +265,6 @@ void init_v(VV *vv, V *v) {
 void init_vv(VV *vv) {
 	memset(vv, 0, sizeof(*vv));
 	vv->s = s7_init();
-	s7_gc_on(vv->s, false); //bdw ftw!  (Todo obviate, maybe.)
 #define SYM(x,y) vv->sym_##x = s7_make_symbol(vv->s, y)
 #define SSYM(x) vv->sym_ ##x = s7_make_symbol(vv->s, #x)
 #define PSYM(x) vv->sym_ ##x##_p = s7_make_symbol(vv->s, #x "?")

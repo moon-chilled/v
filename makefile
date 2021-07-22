@@ -18,7 +18,7 @@ o/%.o: %.c
 	$(CC) -c -o $@ $(CFLAGS) $<
 o/s7/s7.o: s7/s7.c
 	@mkdir -p o/s7
-	$(CC) -c -Ii -Is7 -g -std=c11 -o o/s7/s7.o s7/s7.c
+	$(CC) -c -Ii -Is7 -g -O3 -fomit-frame-pointer -funroll-loops -march=native -std=c11 -o o/s7/s7.o s7/s7.c
 
 fetchs7:
 	wget https://ccrma.stanford.edu/software/s7/s7.tar.gz

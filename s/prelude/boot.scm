@@ -1,4 +1,4 @@
-(define loop (let () (load "prelude/loop.scm" (curlet)) loop))
+(load "prelude/loop/loop.scm")
 (load "prelude/language.scm")
 (load "prelude/editor-glue.scm")
 

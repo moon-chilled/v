@@ -14,8 +14,10 @@ static Function *s7_to_v_function(VV *vv, s7_pointer p) {
 	s7_int t = s7_c_object_type(p); //returns -1 for non-c-objects, so no problem if it's something else entirely
 	if (t != vv->tag_function_function && t != vv->tag_function_mutation && t != vv->tag_function_motion) {
 		if (s7_is_string(p)) {
+			const u1 *s = (const u1*)s7_string(p);
+			usz l = s7_string_length(p);
 			//ugh, cnew
-			return cnew((Function){.type.type=TypeStr, .str={.s=(const u1*)s7_string(p), .l=s7_string_length(p)}});
+			return cnew((Function){.type.type=TypeStr, .str={.s=memcpy(new(u1,l), s, l), .l=s7_string_length(p)}});
 		}
 		return NULL;
 	}
@@ -87,7 +89,7 @@ solo:
 }
 
 #define PRELUDE s7_pointer __attribute__((unused)) _original_args = args; int __attribute__((unused)) _argument_number = 1;
-#define PPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t)
+#define PPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t); s7_gc_protect(s, s7_car(args))
 #define PSPRELUDE(fn, t_, t) if (!s7_is_pair(args) || !t_(s, s7_car(args))) return s7_wrong_type_arg_error(s, fn, _argument_number, s7_car(args), t)
 #define GPOP(x, fn) if (!s7_is_pair(args)) return s7_wrong_number_of_args_error(s, fn, _original_args); s7_pointer x = s7_car(args); args = s7_cdr(args); _argument_number++
 #define POP(x, fn, t_, t) PPRELUDE(fn, t_, t); s7_pointer x = s7_car(args); args = s7_cdr(args); _argument_number++

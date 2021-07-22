@@ -1,0 +1,3 @@
+[submodule "s/prelude/loop"]
+	path = s/prelude/loop
+	url = https://github.com/moon-chilled/loop
