@@ -19,19 +19,20 @@
 ; c states:
 ; neutral identifier keyword builtin-type line-comment block-comment string
 
-(define +c-keywords+ (map symbol->string '(for do while if else break continue default goto)))
-(define +c-builtin-types+ (map symbol->string '(void _Bool bool char short int long signed unsigned float double
-                                                int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t 
-                                                struct union
-                                                typedef extern static _Thread_local thread_local auto register
-                                                const volatile restrict _Atomic
-                                                inline _Noreturn noreturn)))
+(define +c-keywords+ (apply hash-table (map (lambda (x) (values (symbol->string x) #t)) '(for do while if else break continue default goto return switch))))
+(define +c-builtin-types+ (apply hash-table (map (lambda (x) (values (symbol->string x) #t))
+                                                 '(void _Bool bool char short int long signed unsigned float double
+                                                   int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t
+                                                   __int128_t __uint128_t
+                                                   struct union
+                                                   typedef extern static _Thread_local thread_local auto register
+                                                   const volatile restrict _Atomic
+                                                   inline _Noreturn noreturn))))
 
 (defun c-parse (it old-state)
-  (let ((c (iterator-read it #f)))
+  (let ((c (iterator-read it #t)))
     (cond
       ((string=? "/" c)
-       (iterator-read it #t)
        (let ((c (iterator-read it #f)))
          (cond
            ((string=? c "/")
@@ -53,21 +54,20 @@
              do (iterator-read it #t))
        'neutral)
       ((string=? c "\"")
-       (iterator-read it #t)
        (loop until (or (iterator-out it)
                        (string=? "\"" (iterator-read it #t))))
        'string)
-      ((char-position c "+=!%^&*-|~<>?:-") (iterator-read it #t) 'operator)
-      ((char-position c "()[]{};") (iterator-read it #t) 'operator) ;not really...
+      ((char-position c "+=!%^&*-|~<>?:-") 'operator)
+      ((char-position c "()[]{};") 'operator) ;not really...
       (#t
-       (let ((id (iterator-read it #t)))
+       (let ((id c))
          (let ((sep "/* \t\n+=!%^&-|~<>?:-[]{}();")) ;\f\v\r
            (loop until (or (iterator-out it)
                            (char-position (iterator-read it #f) sep))
                  do (set! id (append id (iterator-read it #t))))
            (cond
-             ((member id +c-keywords+) 'keyword)
-             ((member id +c-builtin-types+) 'builtin-type)
+             ((+c-keywords+ id) 'keyword)
+             ((+c-builtin-types+ id) 'builtin-type)
              (#t 'identifier))))))))
 
 (defun state-to-colour (state)

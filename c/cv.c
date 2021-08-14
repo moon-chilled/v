@@ -225,6 +225,7 @@ static int render(TickitWindow *win, TickitEventFlags flags, void *_info, void *
 			if (*text == '\n') {
 				tickit_renderbuffer_setpen(info->rb, eol);
 				tickit_renderbuffer_char_at(info->rb, vy, voff, '$');
+				tickit_renderbuffer_setpen(info->rb, text_pen);
 				vy++;
 				voff = 0;
 			} else {
