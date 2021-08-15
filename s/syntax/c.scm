@@ -20,6 +20,7 @@
 ; neutral identifier keyword builtin-type line-comment block-comment string
 
 (define +c-keywords+ (apply hash-table (map (lambda (x) (values (symbol->string x) #t)) '(for do while if else break continue default goto return switch))))
+
 (define +c-builtin-types+ (apply hash-table (map (lambda (x) (values (symbol->string x) #t))
                                                  '(void _Bool bool char short int long signed unsigned float double
                                                    int8_t uint8_t int16_t uint16_t int32_t uint32_t int64_t uint64_t

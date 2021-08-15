@@ -1,5 +1,6 @@
 (load "prelude/loop/loop.scm")
 (load "prelude/language.scm")
+(load "prelude/tacit.scm")
 (load "prelude/editor-glue.scm")
 
 (load "test/test.scm")

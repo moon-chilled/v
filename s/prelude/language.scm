@@ -122,7 +122,7 @@
 
 ; like dotimes, but return a list of body
 ; (times (i n) b) ←→ (loop for i below n collect b)
-; (times n b) ←→ (loop for (gensym) below n collect b)
+; (times n b) ←→ (loop repeat n collect b)
 (defexpansion times (spec :rest body)
               (let ((m (gensym))
                     (r (gensym))
