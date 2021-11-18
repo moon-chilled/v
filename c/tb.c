@@ -105,17 +105,7 @@ TextBufferIter *tb_iter(TextBuffer *tb, Loc cursor, TbiMode mode, bool forward, 
 			ret->out = true;
 		}
 	} else if (!cursor.bx && !forward) {
-		if (mode != TbiMode_EatEverything) {
-			while (cursor.y && !tb->lines[cursor.y-1].bsz) cursor.y--;
-			if (cursor.y) {
-				ret->out = true;
-			} else {
-				cursor.bx = 0;
-				cursor.gx = 0;
-			}
-		} else {
-			ret->out = true;
-		}
+		ret->out = mode != TbiMode_EatEverything;
 	}
 	return ret;
 }
@@ -172,7 +162,7 @@ void tbi_read(TextBufferIter *tbi, bool advance, const u1 **dst, usz *bsz, usz *
 			*bsz = 0;
 			for (++*bsz; !u8_advance(tbi->tb->lines[nc.y].chars[--nc.bx]); ++*bsz);
 			nc.gx--;
-			if (!nc.bx) nout = true;
+			if (!nc.bx) nout = tbi->mode != TbiMode_EatEverything;
 			*dst = tbi->tb->lines[nc.y].chars + nc.bx;
 		}
 	}

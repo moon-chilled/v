@@ -27,16 +27,28 @@
                      (UNSAFE-create-cursor y (grapheme-count y) (byte-count y))))
 ; vvv this can be prettier with some nice macros
 (define-motion word-forward
-               (let ((it (iterate 'stop-before-newline #t #f)))
+               (let ((it (iterate 'eat-everything #t #f)))
                  (loop until (or (iterator-out it) (isspace (iterator-read it #t))))
                  (loop until (or (iterator-out it) (not (isspace (iterator-read it #f))))
                        do (iterator-read it #t))
                  (iterator-loc it)))
 (define-motion word-back
-               (let* ((it (iterate 'stop-after-newline #f #f)))
+               (let* ((it (iterate 'eat-everything #f #f)))
                  (loop until (or (iterator-out it) (not (isspace (iterator-read it #t)))))
                  (loop until (or (iterator-out it) (isspace (iterator-read it #f)))
                        do (iterator-read it #t))
+                 (iterator-loc it)))
+(define-motion paragraph-forward
+               (let ((it (iterate 'eat-everything #t #f)))
+                 (loop until (or (iterator-out it) (not (string=? "\n" (iterator-read it #t)))))
+                 (loop until (or (iterator-out it) (and (string=? "\n" (iterator-read it #t))
+                                                        (or (iterator-out it) (string=? "\n" (iterator-read it #f))))))
+                 (iterator-loc it)))
+(define-motion paragraph-back
+               (let ((it (iterate 'eat-everything #f #f)))
+                 (loop until (or (iterator-out it) (not (string=? "\n" (iterator-read it #t)))))
+                 (loop until (or (iterator-out it) (and (string=? "\n" (iterator-read it #t))
+                                                        (or (iterator-out it) (string=? "\n" (iterator-read it #f))))))
                  (iterator-loc it)))
 
 

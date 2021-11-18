@@ -8,6 +8,8 @@
 (bind-motion eof #\G)
 (bind-motion word-forward #\w)
 (bind-motion word-back #\b)
+(bind-motion paragraph-back #\{)
+(bind-motion paragraph-forward #\})
 
 (bind-mutation delforward #\x)
 (bind-mutation delbackward #\X)
